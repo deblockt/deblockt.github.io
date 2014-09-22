@@ -1,0 +1,8 @@
+{
+    "name": "easyCode",
+    "dependencies": {
+        "less": "latest",
+        "bootstrap": "latest",
+        "angular": "latest"
+    }
+}
