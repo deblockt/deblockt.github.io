@@ -3,6 +3,7 @@
     "dependencies": {
         "less": "latest",
         "bootstrap": "latest",
-        "angular": "latest"
+		"requirejs" : "latest",
+		"angular-bootstrap" : "latest"
     }
 }
