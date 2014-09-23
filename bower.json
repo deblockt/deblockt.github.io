@@ -5,6 +5,7 @@
         "bootstrap": "latest",
 		"requirejs" : "latest",
 		"angular-bootstrap" : "latest",
-		"angular-ui-codemirror" : "latest"
+		"angular-ui-codemirror" : "latest",
+		"angular-route" : "latest"
     }
 }

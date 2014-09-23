@@ -2,10 +2,12 @@ require.config({
 	baseUrl : '../bower_components',
 	paths : {
 		app : '../javascripts/app',
-		angular : 'angular/angular.min'
+		angular : 'angular/angular.min',
+		angularBootstrap : 'angular-bootstrap/ui-bootstrap-tpls.min',
+		angularRoute : 'angular-route/angular-route.min'
 	},
 	shim : {
-		'angular-bootstrap/ui-bootstrap.min' : {
+		'angularBootstrap' : {
 			deps : [
 				'angular'
 			],
@@ -18,10 +20,17 @@ require.config({
 			],
 			exports: 'codeMirrorAngular'
 		},
+		'angularRoute': {		
+			deps : [
+				'angular',
+			],
+			exports: 'angularRoute'
+		},
 		app : {
 			deps: [
 				'angular',
-				'angular-bootstrap/ui-bootstrap.min',
+				'angularRoute',
+				'angularBootstrap',
 				'angular-ui-codemirror/ui-codemirror',
 				'codemirror/mode/htmlmixed/htmlmixed'
 			],
