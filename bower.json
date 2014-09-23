@@ -4,6 +4,7 @@
         "less": "latest",
         "bootstrap": "latest",
 		"requirejs" : "latest",
-		"angular-bootstrap" : "latest"
+		"angular-bootstrap" : "latest",
+		"angular-ui-codemirror" : "latest"
     }
 }

@@ -1,33 +1,20 @@
 <!doctype html>
-<html ng-app="easyCodeApp">
+<html>
 	<head>
 		<title> Easy Code Home </title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		
-		<link rel="stylesheet/less" type="text/css" href="../styles/less/bootstrap_extended/bootstrap.less" />
+		<link rel="stylesheet/less" type="text/css" href="../styles/less/bootstrap_extended/bootstrap.less" /> 
+		<link rel="stylesheet" type="text/css" href="../bower_components/codemirror/lib/codemirror.css"/>
 		
-		<script type="text/javascript" src="../bower_components/less/dist/less-1.7.5.min.js"> </script>
-		<script type="text/javascript" src="../bower_components/angular/angular.min.js"> </script>
-		
-		
-		<script type="text/javascript" src="../bower_components/requirejs/require.js"> </script>
-		
-		<script type="text/javascript" src="../bower_components/angular-bootstrap/ui-bootstrap.min.js"> </script>
-
-		<script type="text/javascript">
-			var app = angular.module('easyCodeApp', ['ui.bootstrap']);
-			app.controller('easyCodeController', function($scope){
-				// add header properties for phone support
-				$scope.header = {
-					isCollapsed : true,
-				};
-			})
-			
-		</script>
+		<script type="text/javascript" src="../bower_components/less/dist/less-1.7.5.min.js"> </script> 
+		<!-- lancement de l'application -->
+		<script type="text/javascript" src="../bower_components/requirejs/require.js" data-main="../javascripts/main.js"> </script>
+	
 	</head>
-	<body ng-controller="easyCodeController">
+	<body>
 		<!-- navbar du site -->
-		<nav class="navbar navbar-default" role="navigation">
+		<nav class="navbar navbar-default" role="navigation" ng-controller="headerController">
 			<div class="container-fluid">
 				<!-- Brand and toggle get grouped for better mobile display -->
 				<div class="navbar-header">
@@ -53,7 +40,8 @@
 	
 		
 		<!-- site content -->
-		<div class="content" ng-view="">
+		<div class="content" ng-controller="easyCodeController">
+			<textarea ui-codemirror="editor.options" ng-model="editor.content"></textarea>
 		</div>
 	</body>
 </html>
