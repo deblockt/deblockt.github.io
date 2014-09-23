@@ -32,7 +32,8 @@ require.config({
 				'angularRoute',
 				'angularBootstrap',
 				'angular-ui-codemirror/ui-codemirror',
-				'codemirror/mode/htmlmixed/htmlmixed'
+				'codemirror/mode/htmlmixed/htmlmixed',
+                '../javascripts/codeMirrorEasyCode/easyCode'
 			],
 			exports: 'app'
 		}
