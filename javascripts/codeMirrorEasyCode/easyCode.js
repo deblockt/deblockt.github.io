@@ -1,6 +1,21 @@
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: http://codemirror.net/LICENSE
 
+if (!Array.indexOf)
+{
+  Array.indexOf = [].indexOf ?
+      function (arr, obj, from) { return arr.indexOf(obj, from); }:
+      function (arr, obj, from) { // (for IE6)
+        var l = arr.length,
+            i = from ? parseInt( (1*from) + (from<0 ? l:0), 10) : 0;
+        i = i<0 ? 0 : i;
+        for (; i<l; i++) {
+          if (i in arr  &&  arr[i] === obj) { return i; }
+        }
+        return -1;
+      };
+}
+
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror/lib/codemirror"));
@@ -22,52 +37,72 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
       hooks = parserConfig.hooks || {},
       multiLineStrings = parserConfig.multiLineStrings;
   var isOperatorChar = /[+\-*&%=<>!?|\/]/;
-
+  // create electricInput regex for end block keywork
+  var electricInputRegexString = '';
+  for (var startWord in blockKeywords) {
+	for (var word in blockKeywords[startWord]) {
+		electricInputRegexString +=  blockKeywords[startWord][word] + '|';
+	}
+  }
+  electricInputRegexString = electricInputRegexString.substring(0, electricInputRegexString.length - 1);
+  
+  var electricInputRegex = new RegExp(electricInputRegexString, 'i');
+  
   var curPunc;
-
+  
   function tokenBase(stream, state) {
-    var ch = stream.next();
-    if (hooks[ch]) {
-      var result = hooks[ch](stream, state);
-      if (result !== false) return result;
-    }
+    curPunc = '';
+	var ch = stream.next();
+	// cas d'une chaine de caractére
     if (ch == '"' || ch == "'") {
       state.tokenize = tokenString(ch);
       return state.tokenize(stream, state);
     }
-    if (/[\[\]{}\(\),;\:\.]/.test(ch)) {
-      curPunc = ch;
-      return null;
-    }
+	// cas d'un nombre
     if (/\d/.test(ch)) {
       stream.eatWhile(/[\w\.]/);
       return "number";
     }
+	
+	// cas du début d'un commentaire
     if (ch == "/") {
       if (stream.eat("*")) {
         state.tokenize = tokenComment;
         return tokenComment(stream, state);
       }
+	  // cas d'un commentaire sur une seul ligne on va simplement à la fin de la ligne
       if (stream.eat("/")) {
         stream.skipToEnd();
         return "comment";
       }
     }
-    if (isOperatorChar.test(ch)) {
+	
+	// cas d'un opérateur
+	if (isOperatorChar.test(ch)) {
       stream.eatWhile(isOperatorChar);
       return "operator";
     }
+	
     stream.eatWhile(/[\w\$_]/);
     var cur = stream.current();
-    if (keywords.propertyIsEnumerable(cur)) {
-      if (blockKeywords.propertyIsEnumerable(cur)) curPunc = "newstatement";
-      return "keyword";
+	cur = cur.toUpperCase();
+    // cas d'un mot clef
+	if (keywords.propertyIsEnumerable(cur)) {
+	  if (blockKeywords.propertyIsEnumerable(cur)) {
+		curPunc = "newstatement";
+	  } else if (
+			blockKeywords.propertyIsEnumerable(state.context.blockName) 
+		 && blockKeywords[state.context.blockName].indexOf(cur) >= 0
+	  ) {
+		curPunc = "endstatement";
+      }
+	  
+	  return "keyword";
     }
-    if (builtin.propertyIsEnumerable(cur)) {
-      if (blockKeywords.propertyIsEnumerable(cur)) curPunc = "newstatement";
-      return "builtin";
-    }
+	
+	// gestion des atoms du languages
     if (atoms.propertyIsEnumerable(cur)) return "atom";
+	
     return "variable";
   }
 
@@ -96,24 +131,27 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     return "comment";
   }
 
-  function Context(indented, column, type, align, prev) {
+  function Context(indented, column, type, align, prev, blockName, vars) {
     this.indented = indented;
     this.column = column;
     this.type = type;
     this.align = align;
     this.prev = prev;
+	this.blockName = blockName;
+	this.vars = vars || [];
   }
 
-  function pushContext(state, col, type) {
+  function pushContext(state, col, type, blockName) {
     var indent = state.indented;
-    if (state.context && state.context.type == "statement")
-      indent = state.context.indented;
-    return state.context = new Context(indent, col, type, null, state.context);
+	
+    if (type == "statement") {
+	  indent = ((state.context) ? state.context.indented : 0) +  indentUnit;
+	}
+	
+    return state.context = new Context(indent, col, type, null, state.context, blockName);
   }
+  
   function popContext(state) {
-    var t = state.context.type;
-    if (t == ")" || t == "]" || t == "}")
-      state.indented = state.context.indented;
     return state.context = state.context.prev;
   }
 
@@ -123,59 +161,49 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     startState: function(basecolumn) {
       return {
         tokenize: null,
-        context: new Context((basecolumn || 0) - indentUnit, 0, "top", false),
+        context: new Context(0, 0, "top", false),
         indented: 0,
         startOfLine: true
       };
     },
 
     token: function(stream, state) {
-	
       var ctx = state.context;
       if (stream.sol()) {
         if (ctx.align == null) ctx.align = false;
         state.indented = stream.indentation();
         state.startOfLine = true;
       }
-      if (stream.eatSpace()) return null;
-      curPunc = null;
-      console.log(state);
-      var style = (state.tokenize || tokenBase)(stream, state);
-      if (style == "comment" || style == "meta") return style;
-      if (ctx.align == null) ctx.align = true;
-
-      console.log(curPunc);
-      if ((curPunc == ";" || curPunc == ":" || curPunc == ",") && ctx.type == "statement") popContext(state);
-      else if (curPunc == "{") pushContext(state, stream.column(), "}");
-      else if (curPunc == "[") pushContext(state, stream.column(), "]");
-      else if (curPunc == "(") pushContext(state, stream.column(), ")");
-      else if (curPunc == "}") {
-        while (ctx.type == "statement") ctx = popContext(state);
-        if (ctx.type == "}") ctx = popContext(state);
-        while (ctx.type == "statement") ctx = popContext(state);
-      }
-      else if (curPunc == ctx.type) popContext(state);
-      else if (((ctx.type == "}" || ctx.type == "top")) || (ctx.type == "statement" && curPunc == "newstatement"))
-        pushContext(state, stream.column(), "statement");
-      state.startOfLine = false;
 	  
-	  console.log(style, ""+curPunc+"");		
+      if (stream.eatSpace()) return null;
+	  
+	  var style = (state.tokenize || tokenBase)(stream, state);
+     
+      ctx.align = ctx.align || true;
+	
+	  if (curPunc == "endstatement") {
+		popContext(state);
+	  }
+	  
+	  if (curPunc == "newstatement") {
+		pushContext(state, stream.column(), "statement", stream.current());
+	  }
+	  
       return style;
     },
 
     indent: function(state, textAfter) {
-	    console.log('ON EST ICI ', state, textAfter);
-      if (state.tokenize != tokenBase && state.tokenize != null) return CodeMirror.Pass;
-      var ctx = state.context, firstChar = textAfter && textAfter.charAt(0);
-      if (ctx.type == "statement" && firstChar == "}") ctx = ctx.prev;
-      var closing = firstChar == ctx.type;
-      if (ctx.type == "statement") return ctx.indented + (firstChar == "{" ? 0 : statementIndentUnit);
-      else if (ctx.align && (!dontAlignCalls || ctx.type != ")")) return ctx.column + (closing ? 0 : 1);
-      else if (ctx.type == ")" && !closing) return ctx.indented + statementIndentUnit;
-      else return ctx.indented + (closing ? 0 : indentUnit);
+	  // if it's a end statement, this is reindented with -indentUnit
+	  if (blockKeywords[state.context.blockName] && blockKeywords[state.context.blockName].indexOf(textAfter.toUpperCase()) >= 0) {
+		state.context.indented -= indentUnit;
+		if (state.context.indented < 0) {
+			state.context.indented = 0;
+		}
+	  }
+	  
+      return (state.context ? state.context.indented : 0);
     },
-
-    electricChars: "{}",
+	electricInput: electricInputRegex,
     blockCommentStart: "/*",
     blockCommentEnd: "*/",
     lineComment: "//",
@@ -187,76 +215,6 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     var obj = {}, words = str.split(" ");
     for (var i = 0; i < words.length; ++i) obj[words[i]] = true;
     return obj;
-  }
-  var cKeywords = "auto if break int case long char register continue return default short do sizeof " +
-    "double static else struct entry switch extern typedef float union for unsigned " +
-    "goto while enum void const signed volatile";
-
-  function cppHook(stream, state) {
-    if (!state.startOfLine) return false;
-    for (;;) {
-      if (stream.skipTo("\\")) {
-        stream.next();
-        if (stream.eol()) {
-          state.tokenize = cppHook;
-          break;
-        }
-      } else {
-        stream.skipToEnd();
-        state.tokenize = null;
-        break;
-      }
-    }
-    return "meta";
-  }
-
-  function cpp11StringHook(stream, state) {
-    stream.backUp(1);
-    // Raw strings.
-    if (stream.match(/(R|u8R|uR|UR|LR)/)) {
-      var match = stream.match(/"([^\s\\()]{0,16})\(/);
-      if (!match) {
-        return false;
-      }
-      state.cpp11RawStringDelim = match[1];
-      state.tokenize = tokenRawString;
-      return tokenRawString(stream, state);
-    }
-    // Unicode strings/chars.
-    if (stream.match(/(u8|u|U|L)/)) {
-      if (stream.match(/["']/, /* eat */ false)) {
-        return "string";
-      }
-      return false;
-    }
-    // Ignore this hook.
-    stream.next();
-    return false;
-  }
-
-  // C#-style strings where "" escapes a quote.
-  function tokenAtString(stream, state) {
-    var next;
-    while ((next = stream.next()) != null) {
-      if (next == '"' && !stream.eat('"')) {
-        state.tokenize = null;
-        break;
-      }
-    }
-    return "string";
-  }
-
-  // C++11 raw string literal is <prefix>"<delim>( anything )<delim>", where
-  // <delim> can be a string up to 16 characters long.
-  function tokenRawString(stream, state) {
-    // Escape characters that have special regex meanings.
-    var delim = state.cpp11RawStringDelim.replace(/[^\w\s]/g, '\\$&');
-    var match = stream.match(new RegExp(".*?\\)" + delim + '"'));
-    if (match)
-      state.tokenize = null;
-    else
-      stream.skipToEnd();
-    return "string";
   }
 
   function def(mimes, mode) {
@@ -271,19 +229,78 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     add(mode.atoms);
     if (words.length) {
       mode.helperType = mimes[0];
-      CodeMirror.registerHelper("hintWords", mimes[0], words);
+      CodeMirror.registerHelper("hint", "easyCode", function(editor, options){
+		var Pos = CodeMirror.Pos;
+		var cur = editor.getCursor();
+		var token = editor.getTokenAt(editor.getCursor());
+		
+		var list = [];
+		
+		function addToList(value) {
+			// test if value correspond current entry
+			if (token.string.trim().length > 0 && value.indexOf(token.string) == -1) {
+				return;
+			}
+			
+			list.push(
+				{
+					text : value,
+					hint : function(cm, data, completion){
+						var easyCode = cm.getMode({},"easyCode");
+						
+						var before = cm.getRange(Pos(cur.line, 0), Pos(cur.line, token.start));
+						// if the word is the first of the line
+						if (before.trim().length == 0) {
+							token.start = easyCode.indent(token.state, completion.text);
+						} else if (token.string.trim() == 0) {
+							// if it's after an other word but no car are entred
+							token.start += 1;
+						}
+												
+						cm.replaceRange(completion.text, Pos(cur.line, token.start),  Pos(cur.line, token.end), "complete")
+					}
+				}
+			);
+		}
+		
+		
+		// add end bloc keyword
+		if (vblocKeyWord[token.state.context.blockName]) {
+			for (var i in  vblocKeyWord[token.state.context.blockName]) {
+				addToList(vblocKeyWord[token.state.context.blockName][i]);
+			}
+		}
+		
+		for (var i in words) {
+			if (list.indexOf(words[i]) == -1) {
+				addToList(words[i]);
+			}
+		}
+	 
+		return {
+			list : list,
+			from: Pos(cur.line, token.start),
+			to: Pos(cur.line, token.end)				
+		};
+	  });
     }
 
     for (var i = 0; i < mimes.length; ++i)
       CodeMirror.defineMIME(mimes[i], mode);
   }
 
+  var vblocKeyWord = {
+	'SI'  : ['SI_NON', 'FIN_SI'],
+	'TANT_QUE' : ['FIN_TANT_QUE'],
+	'POUR' : ['FIN_POUR'],
+	'SI_NON' : ['FIN_SI']
+  };
   def(["text/easyCode-src"], {
     name: "easyCode",
-    keywords: words("LIRE ECRIRE SI SI_NON FIN_SI NOMBRE CHAINE POUR ALLANT_DE A FIN_POUR TANT_QUE FIN_TANT_QUE"),
-    blockKeywords: words("SI SI_NON TANT_QUE POUR"),
-    atoms: words("null"),
-    hooks: {"#": cppHook},
+    keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
+    blockKeywords: vblocKeyWord,
+    atoms: words("VIDE NOMBRE CHAINE"),
     modeProps: {fold: ["brace", "include"]}
   });
+  
 });

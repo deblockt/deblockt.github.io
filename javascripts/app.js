@@ -16,22 +16,23 @@
 			options : {
 				lineNumbers: true,
 				tabSize : 2,							
-				mode : 'text/easyCode-src'
+				mode : 'text/easyCode-src',
+				extraKeys: {"Ctrl-Space": "autocomplete"}
 			}
 		};
 		
 		$scope.tabs = [
-			{title : 'Algo 1', content : 'Content Algo 1', active : true},
-			{title : 'Algo 2', content : 'Content Algo 2'}
+			{title : 'Algo 1', content : 'SI test > 0', active : true}
 		];
 
-		$scope.nbTabs = 2;
+		$scope.nbTabs = 1;
 		
 		$scope.addTab = function(){
 			$scope.tabs.push({
 				title : 'Algo ' + ++$scope.nbTabs, content : '<html>\n\t<head>\n\t\t<title> alog n°'+$scope.nbTabs+'</title>\n\t</head>\n\t<body>\n\t</body>\n</html>', active : true
 			});
 		};
+		
 	});
 	
 	

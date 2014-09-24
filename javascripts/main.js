@@ -1,5 +1,6 @@
 require.config({
 	baseUrl : '../bower_components',
+    urlArgs: "bust=" + (new Date()).getTime(),
 	paths : {
 		app : '../javascripts/app',
 		angular : 'angular/angular.min',
@@ -33,6 +34,7 @@ require.config({
 				'angularBootstrap',
 				'angular-ui-codemirror/ui-codemirror',
 				'codemirror/mode/htmlmixed/htmlmixed',
+				'codemirror/addon/hint/show-hint',
                 '../javascripts/codeMirrorEasyCode/easyCode'
 			],
 			exports: 'app'
