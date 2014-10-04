@@ -1,0 +1,370 @@
+// TODO gérer les expressions du style test * 5 qui ne fonctionne pas alors que 5 * test et (5 * test) fonctionne
+// TODO gérer la detection des variables non initialisée
+
+{
+	/**
+	 * emlation of indexOf for old navigator
+	 */
+	if (!Array.indexOf) {
+	  Array.indexOf = [].indexOf ?
+		  function (arr, obj, from) { return arr.indexOf(obj, from); }:
+		  function (arr, obj, from) { // (for IE6)
+			var l = arr.length,
+				i = from ? parseInt( (1*from) + (from<0 ? l:0), 10) : 0;
+			i = i<0 ? 0 : i;
+			for (; i<l; i++) {
+			  if (i in arr  &&  arr[i] === obj) { return i; }
+			}
+			return -1;
+		  };
+	}
+	
+	if(!Array.isArray) {
+	  Array.isArray = function(arg) {
+		return Object.prototype.toString.call(arg) === '[object Array]';
+	  };
+	}
+	
+	/**
+	 * create object with the current line and column
+	 */
+	function computeOffset(param) {
+		if (param) {
+			param.offset = computeOffset();
+			return param;
+		}
+		return {line : line(), column : column(), offset : offset()};
+	}
+	
+	/**
+	 * create of block of instruction
+	 */
+	function createBlock(lines) {
+		var ret = [];
+		for (var i in lines) {
+			if (lines[i]) {
+				ret.push(lines[i]);
+				// check declare and var usage
+			}
+		}
+		
+		return ret;
+	}
+	
+	/**
+	 * create a condition structure
+	 */
+	function createCondition(test, yes, no, elseif) {
+		var condition = {
+			type : 'condition',
+			test : test,
+			yes : yes,
+			offset : computeOffset()
+		};
+		var currentIf = condition;
+		if (elseif && elseif.length > 0) {
+			for (var i in elseif) {
+				currentIf.no = [elseif[i]];
+				currentIf = elseif[i];
+			}
+		}
+		currentIf.no = no;
+		return condition;
+	}
+	
+	/**
+	 * créé une action d'affectation
+	 */
+	function createAffectation(varname, expression) {
+		return {type : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
+	}
+	
+	function createVar(name, index, attribute) {
+		if (Array.isArray(name)) {
+			name = name.join('');
+		}
+		
+		return {
+			type : 'var',
+			name : name.toUpperCase(),
+			offset : computeOffset(),
+			index : index,
+			attribute : attribute
+		}
+	}
+	
+	
+	// priority of operations
+	var operationPriority = {
+		"-" : 1,
+		"+" : 1,
+		"ET" : 3,
+		"OU" : 2,
+		"*" : 0,
+		"/" : 0,
+		"%" : 0
+	}
+	
+	/**
+	 * create an arithmetique or boolean instruction
+	 */
+	function CreateOperation(operation, left, right, type) {
+		if (right 
+				&& right.operation 
+				&& !right.priority 
+				&& operationPriority[right.operation] == operationPriority[operation]
+				&& right.type == type
+			) {
+			// récupération de l'element le plus à droites
+			// il faut en fait ajouter l'operation à la gauche de l'operation de droit
+			// mostLeft représente le dernier objet qui a un element à gauche
+			var mostLeft = right;
+			while (mostLeft.left.left && !mostLeft.left.priority && mostLeft.left.type == mostLeft.type) {
+				mostLeft = mostLeft.left;
+			}
+			
+			// on va recréer l'operation courrante dans la partie la plus à gauche
+			mostLeft.left = CreateArithmetique(operation, left , mostLeft.left);
+			return right;
+		}
+		
+		return {
+			type : type,
+			priority : false,
+			operation : operation,		
+			left : left,
+			right : right,
+			offset : computeOffset()
+		}
+	}
+	
+	function CreateArithmetique(operation, left, right) {
+		return CreateOperation(operation, left, right, "numerique");
+	}
+	
+	function CreateArithmetiqueBoolean(operation, left, right) {
+		return CreateOperation(operation, left, right, "boolean");
+	}
+	
+	/**
+	 * call when a function is call on a other function
+	 * as test.test().test()
+	 */
+	function ChangeLastAttributeByMethod(variable, methodParameters, nextAccess) {
+		var varForAddnextAccess = null;
+		if (!variable.attribute) {
+			variable.type = "function"
+			variable.params = methodParameters;
+			varForAddnextAccess = variable;
+		} else {		
+			var lastAttribute = variable;
+			while (variable.attribute && variable.attribute.attribute) {
+				lastAttribute = variable.attribute;
+			}
+			
+			lastAttribute.method = {
+				name : lastAttribute.attribute.name,
+				params : methodParameters
+			};
+			
+			delete lastAttribute.attribute;
+			varForAddnextAccess = lastAttribute;
+		}
+		
+		if (nextAccess) {
+			if (nextAccess.type == "function") {
+				varForAddnextAccess.method = nextAccess;
+				delete nextAccess.type;
+			} else {
+				varForAddnextAccess.attribute = nextAccess;
+			}
+		}
+		
+		return variable;
+	}
+	
+	
+}
+
+
+// start the document. each expression end with an \n
+start 
+	= block:block {return block}
+
+block
+	= codeLines:codeLine* {return createBlock(codeLines)}
+	
+// list all possible expression
+codeLine = 
+	eatSpace code:(
+	 define
+   / ifblock
+   / whileblock
+   / foreachblock
+   / oneLineComment
+   / multilineComment
+   / ecrire
+   / lire
+   / affectation
+   / [\n] {return undefined} // cas de la ligne vide
+   ) [\n\ \t]* {return code}
+	
+
+/********************************************************************************
+**** GESTION DES EXPRESSION MATHEMATIQUE (BOOLEEN, ARITHMETIQUE *****************
+*********************************************************************************/
+nonBooleanExpression
+	=  notPrioritary
+	
+booleanExpression 
+	= notPrioritaryBoolean
+
+
+/* TODO gérer le problème de l'expression test * 5 qui passe dans le booleanExpression */
+expression 
+	= booleanExpression
+	/ nonBooleanExpression
+	
+comparaisonMembre 
+	= 'VRAI'i
+	/ 'FAUX'i
+	/ varName
+	/ nonBooleanExpression
+	
+booleanPrimary 
+	= 'VRAI'i
+	/ 'FAUX'i
+	/ methodCall
+	/ varName
+	/ "(" eatSpace booleanExpression:booleanExpression  eatSpace ")"	{booleanExpression.priority = true; return booleanExpression}
+	/ "!" eatSpace expr:comparaison {return {type : 'reversBoolean', bool : expr}}
+	
+comparaison 
+	= left:booleanPrimary eatSpace oper:("=="/ "<>"/ "!=") eatSpace right:booleanPrimary {return {type : 'comparaison', left : left, right : right, operation : oper}}
+	/ left:nonBooleanExpression eatSpace oper:(">="/"<="/"<"/ ">"/ "=="/ "<>" / "!=") eatSpace right:nonBooleanExpression {return {type : 'comparaison', left : left, right : right, operation : oper}}
+	/ booleanPrimary
+	
+	
+notPrioritaryBoolean
+	= left:priotaryBoolean eatSpace oper:("ET"i) eatSpace right:notPrioritaryBoolean {return CreateArithmetiqueBoolean(oper, left, right)}
+	/ priotaryBoolean
+	
+priotaryBoolean
+	= left:comparaison eatSpace oper:("OU"i) eatSpace right:priotaryBoolean {return CreateArithmetiqueBoolean(oper, left, right)}
+	/ comparaison
+	
+notPrioritary 
+	= left:priotary eatSpace oper:("+"/"-") eatSpace right:notPrioritary {return CreateArithmetique(oper, left, right)}
+	/ priotary
+	
+priotary =
+	left:primitive eatSpace oper:("*"/"/"/"%") eatSpace right:priotary {return CreateArithmetique(oper, left, right)}
+	/ primitive
+
+primitive =
+	string
+	/ car
+	/ integer
+	/ methodCall
+	/ varName 
+	/ "(" eatSpace calc:notPrioritary eatSpace ")" {calc.priority = true; return calc}
+	
+/************************************************************************************
+***** INSTRUCTION DE BASE DU LANGUAGE ***********************************************
+************************************************************************************/
+	
+// define a variable
+define 
+	= 'DEFINIR'i anySpace varname:varName anySpace type:types {return computeOffset({type : 'command', commandName : 'defined', varname : varname, vartype : type})}
+// write an expression
+ecrire 
+	= 'ECRIRE' anySpace expression:expression {return computeOffset({type : 'command', commandName : 'ECRIRE', params : [expression]})}
+// read a variable
+lire
+	= 'LIRE' anySpace varname:varName {return computeOffset({type : 'command', commandName : 'LIRE', params : [varname]})}
+
+affectation 
+	= varname:varName eatSpace '=' eatSpace expression:expression {return createAffectation(varname, expression)}
+	
+oneLineComment
+	= '//' [^\n]* {return undefined}
+
+multilineComment
+	= '/*' [^*]* '*/' {return undefined}
+	
+/********************************************************************************
+************** STRUCTURE CONDITIONNELLE *****************************************
+********************************************************************************/
+ifblock
+	= 'SI' anySpace expr:booleanExpression eatSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
+ifelseblock
+	= 'SI_NON' eatSpace [\n] block:block {return block}
+ifelseifblock
+	= 'SI_NON SI' anySpace expr:booleanExpression eatSpace [\n] block:block {return createCondition(expr, block)}
+	
+// while boucle
+whileblock 
+	= 'TANT_QUE' anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE' {return {type : 'while', test : expr, block : block}}
+
+foreachblock 
+	= 'POUR' anySpace varname:varName anySpace 'DE' anySpace start:(integer/car) anySpace 'A' anySpace end:(integer/car) [\n] block:block 'FIN_POUR' {return {type : 'for', varname : varname, start : start, enf : end, block : block}}
+	 /'POUR' anySpace varname:varName anySpace 'DANS' anySpace arrayName:varName [\n] block:block 'FIN_POUR' {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}}
+
+	 
+/*************************************************************************
+******* PREDICAT DE L'APPLICATION ****************************************
+*************************************************************************/
+// regex for varname
+varName "nom de variable (caractére accéptés a-z A-Z et _)"
+	= varname:[a-zA-Z\_]+ eatSpace '[' eatSpace index:(integer/string/car) eatSpace ']' {return createVar(varname, index)}
+	/ varname:[a-zA-Z\_]+ eatSpace attribute:attributAccess {return createVar(varname, undefined, {name : attribute.name})}
+	/ varname:[a-zA-Z\_]+ {return createVar(varname)}
+	
+attributAccess = 
+	'.' varname:varName {return varname}
+
+methodCall 
+	= varname:varName '(' eatSpace params:functionParameters* eatSpace ')' otherAccess:haveOtherAccess? {return ChangeLastAttributeByMethod(varname, params, otherAccess)}
+
+haveOtherAccess
+	= '.' call:methodCall {return call}
+	/ '.' varname:varName {return varname}
+	
+functionParameters 
+	= parameter:expression eatSpace ',' eatSpace {return parameter}
+	/ expression
+	
+functionName "nom de fonction"
+	= functionName:[a-zA-Z\_]+ {return functionName.join('')}
+	
+// all types possible in language
+types
+	= type:('NOMBRE'i / 'CHAINE'i / 'TABLEAU'i / 'BOOLEEN'i) {return type.toUpperCase()}
+	
+string "chaine de caractère"
+	= '"' string:('\\"' / [^\"] )* '"' {return string.join('')} 
+	/ "'" string:("\\'" / [^\'] )* "'" {return string.join('')} 
+	/ methodCall
+	/ varName
+
+car "caractère exemple : 'a'"
+	= "'" car:. "'" {return car}
+	/ methodCall
+	/ varName
+	
+integer "integer"
+  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }
+  / methodCall
+  / varName
+  
+ /************************************************************************
+ ************* UTILITAIRES ***********************************************
+ ************************************************************************/
+
+// spaceCaractere
+anySpace "espace"
+	= [\ \t]+ {return undefined}
+
+eatSpace
+	= [\ \t]* {return undefined}
+	

@@ -5,7 +5,8 @@ require.config({
 		app : '../javascripts/app',
 		angular : 'angular/angular.min',
 		angularBootstrap : 'angular-bootstrap/ui-bootstrap-tpls.min',
-		angularRoute : 'angular-route/angular-route.min'
+		angularRoute : 'angular-route/angular-route.min',
+		easyCodeParser : '../javascripts/pegjs/easyCodeParser'
 	},
 	shim : {
 		'angularBootstrap' : {
@@ -35,7 +36,8 @@ require.config({
 				'angular-ui-codemirror/ui-codemirror',
 				'codemirror/mode/htmlmixed/htmlmixed',
 				'codemirror/addon/hint/show-hint',
-                '../javascripts/codeMirrorEasyCode/easyCode'
+                '../javascripts/codeMirrorEasyCode/easyCode',
+				'easyCodeParser'
 			],
 			exports: 'app'
 		}
