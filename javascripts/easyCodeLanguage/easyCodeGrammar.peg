@@ -1,6 +1,9 @@
 // TODO gérer les expressions du style test * 5 qui ne fonctionne pas alors que 5 * test et (5 * test) fonctionne
 // TODO gérer la detection des variables non initialisée
-
+// TODO gérer la création de tableau [1,2,3,4,5]
+// TODO gérer l'ajout d'element dans un tableau
+// TODO gérer le problème pour l'expression ECRIRE "Valeur : " + variable
+// TODO ajouter un step pour la boucle for
 {
 	/**
 	 * emlation of indexOf for old navigator
@@ -76,7 +79,7 @@
 	 * créé une action d'affectation
 	 */
 	function createAffectation(varname, expression) {
-		return {type : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
+		return {type : 'command', commandName : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
 	}
 	
 	function createVar(name, index, attribute) {
@@ -98,8 +101,8 @@
 	var operationPriority = {
 		"-" : 1,
 		"+" : 1,
-		"ET" : 3,
-		"OU" : 2,
+		"&&" : 3,
+		"||" : 2,
 		"*" : 0,
 		"/" : 0,
 		"%" : 0
@@ -226,31 +229,31 @@ expression
 	/ nonBooleanExpression
 	
 comparaisonMembre 
-	= 'VRAI'i
-	/ 'FAUX'i
+	= 'VRAI'i {return true}
+	/ 'FAUX'i {return false}
 	/ varName
 	/ nonBooleanExpression
 	
 booleanPrimary 
-	= 'VRAI'i
-	/ 'FAUX'i
+	= 'VRAI'i {return true}
+	/ 'FAUX'i {return false}
 	/ methodCall
 	/ varName
 	/ "(" eatSpace booleanExpression:booleanExpression  eatSpace ")"	{booleanExpression.priority = true; return booleanExpression}
 	/ "!" eatSpace expr:comparaison {return {type : 'reversBoolean', bool : expr}}
 	
 comparaison 
-	= left:booleanPrimary eatSpace oper:("=="/ "<>"/ "!=") eatSpace right:booleanPrimary {return {type : 'comparaison', left : left, right : right, operation : oper}}
-	/ left:nonBooleanExpression eatSpace oper:(">="/"<="/"<"/ ">"/ "=="/ "<>" / "!=") eatSpace right:nonBooleanExpression {return {type : 'comparaison', left : left, right : right, operation : oper}}
+	= left:booleanPrimary eatSpace oper:("=="/"!=") eatSpace right:booleanPrimary {return {type : 'comparaison', left : left, right : right, operation : oper}}
+	/ left:nonBooleanExpression eatSpace oper:(">="/"<="/"<"/ ">"/ "=="/"!=") eatSpace right:nonBooleanExpression {return {type : 'comparaison', left : left, right : right, operation : oper}}
 	/ booleanPrimary
 	
 	
 notPrioritaryBoolean
-	= left:priotaryBoolean eatSpace oper:("ET"i) eatSpace right:notPrioritaryBoolean {return CreateArithmetiqueBoolean(oper, left, right)}
+	= left:priotaryBoolean eatSpace oper:("ET"i) eatSpace right:notPrioritaryBoolean {return CreateArithmetiqueBoolean("&&", left, right)}
 	/ priotaryBoolean
 	
 priotaryBoolean
-	= left:comparaison eatSpace oper:("OU"i) eatSpace right:priotaryBoolean {return CreateArithmetiqueBoolean(oper, left, right)}
+	= left:comparaison eatSpace oper:("OU"i) eatSpace right:priotaryBoolean {return CreateArithmetiqueBoolean("||", left, right)}
 	/ comparaison
 	
 notPrioritary 
@@ -275,13 +278,13 @@ primitive =
 	
 // define a variable
 define 
-	= 'DEFINIR'i anySpace varname:varName anySpace type:types {return computeOffset({type : 'command', commandName : 'defined', varname : varname, vartype : type})}
+	= 'DEFINIR'i anySpace varname:varName anySpace type:types {return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})}
 // write an expression
 ecrire 
-	= 'ECRIRE' anySpace expression:expression {return computeOffset({type : 'command', commandName : 'ECRIRE', params : [expression]})}
+	= 'ECRIRE'i anySpace expression:expression {return computeOffset({type : 'command', commandName : 'write', params : [expression]})}
 // read a variable
 lire
-	= 'LIRE' anySpace varname:varName {return computeOffset({type : 'command', commandName : 'LIRE', params : [varname]})}
+	= 'LIRE'i anySpace varname:varName {return computeOffset({type : 'command', commandName : 'read', varname : varname})}
 
 affectation 
 	= varname:varName eatSpace '=' eatSpace expression:expression {return createAffectation(varname, expression)}
@@ -304,10 +307,10 @@ ifelseifblock
 	
 // while boucle
 whileblock 
-	= 'TANT_QUE' anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE' {return {type : 'while', test : expr, block : block}}
+	= 'TANT_QUE' anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE' {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
 
 foreachblock 
-	= 'POUR' anySpace varname:varName anySpace 'DE' anySpace start:(integer/car) anySpace 'A' anySpace end:(integer/car) [\n] block:block 'FIN_POUR' {return {type : 'for', varname : varname, start : start, enf : end, block : block}}
+	= 'POUR' anySpace varname:varName anySpace 'DE' anySpace start:(integer/car) anySpace 'A' anySpace end:(integer/car) [\n] block:block 'FIN_POUR' {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset()}}
 	 /'POUR' anySpace varname:varName anySpace 'DANS' anySpace arrayName:varName [\n] block:block 'FIN_POUR' {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}}
 
 	 
@@ -339,7 +342,10 @@ functionName "nom de fonction"
 	
 // all types possible in language
 types
-	= type:('NOMBRE'i / 'CHAINE'i / 'TABLEAU'i / 'BOOLEEN'i) {return type.toUpperCase()}
+	= 'NOMBRE'i {return "number"}
+	/ 'CHAINE'i {return "string"}
+	/ 'TABLEAU'i {return "array"}
+	/ 'BOOLEEN'i {return "boolean"}
 	
 string "chaine de caractère"
 	= '"' string:('\\"' / [^\"] )* '"' {return string.join('')} 

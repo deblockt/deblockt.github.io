@@ -6,7 +6,9 @@ require.config({
 		angular : 'angular/angular.min',
 		angularBootstrap : 'angular-bootstrap/ui-bootstrap-tpls.min',
 		angularRoute : 'angular-route/angular-route.min',
-		easyCodeParser : '../javascripts/pegjs/easyCodeParser'
+		easyCodeParser : '../javascripts/easyCodeLanguage/easyCodeParser',
+		easyCodeRunner : '../javascripts/easyCodeLanguage/easyCodeRunner',
+		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal'
 	},
 	shim : {
 		'angularBootstrap' : {
@@ -36,8 +38,9 @@ require.config({
 				'angular-ui-codemirror/ui-codemirror',
 				'codemirror/mode/htmlmixed/htmlmixed',
 				'codemirror/addon/hint/show-hint',
-                '../javascripts/codeMirrorEasyCode/easyCode',
-				'easyCodeParser'
+                '../javascripts/easyCodeLanguage/easyCodeSyntaxHighlighter',
+				'easyCodeParser',
+				'terminalEmulator'
 			],
 			exports: 'app'
 		}
@@ -45,7 +48,7 @@ require.config({
 });
 
 require(['app'], function (app) {
-  // create CodeMirror on wondow for correcte usage of ui.codemirror
+  // create CodeMirror on window for correcte usage of ui.codemirror
   window.CodeMirror = require('codemirror/lib/codemirror');
   app.init();
 });

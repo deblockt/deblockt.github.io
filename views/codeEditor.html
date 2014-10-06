@@ -9,8 +9,15 @@
 	</tab>
 </tabset>
 
+
 <div class="btn-group">
-	<button type="button" class="btn btn-default">Vérifier l'algorithme</button>
-	<button type="button" class="btn btn-default">Executer l'algorithme</button>
-	<button type="button" class="btn btn-default">Tester l'algorithme</button>
+	<button type="button" class="btn btn-default" ng-click="checkAlgo()">Vérifier l'algorithme</button>
+	<button type="button" class="btn btn-default" ng-click="runAlgo()">Executer l'algorithme</button>
+	<button type="button" class="btn btn-default" ng-click="clearConsole()">Vider la console</button>
+</div>
+
+
+<div>
+    <terminal terminal-config="vintage" id="terminal">
+    </terminal>
 </div>

@@ -299,7 +299,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     name: "easyCode",
     keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
     blockKeywords: vblocKeyWord,
-    atoms: words("VIDE NOMBRE CHAINE"),
+    atoms: words("VIDE NOMBRE CHAINE BOOLEEN"),
     modeProps: {fold: ["brace", "include"]}
   });
   
