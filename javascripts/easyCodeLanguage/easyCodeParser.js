@@ -89,7 +89,7 @@ easyCodeParser = (function() {
         peg$c54 = function(calc) {calc.priority = true; return calc},
         peg$c55 = "definir",
         peg$c56 = { type: "literal", value: "DEFINIR", description: "\"DEFINIR\"" },
-        peg$c57 = function(varname, type) {return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})},
+        peg$c57 = function(varname, type) {checkVarName(varname.name); return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})},
         peg$c58 = "ecrire",
         peg$c59 = { type: "literal", value: "ECRIRE", description: "\"ECRIRE\"" },
         peg$c60 = function(expression) {return computeOffset({type : 'command', commandName : 'write', params : [expression]})},
@@ -124,7 +124,7 @@ easyCodeParser = (function() {
         peg$c89 = { type: "literal", value: "TANT_QUE", description: "\"TANT_QUE\"" },
         peg$c90 = "FIN_TANT_QUE",
         peg$c91 = { type: "literal", value: "FIN_TANT_QUE", description: "\"FIN_TANT_QUE\"" },
-        peg$c92 = function(expr, block) {return {type : 'while', test : expr, block : block}},
+        peg$c92 = function(expr, block) {return {type : 'while', test : expr, block : block, offset : computeOffset()}},
         peg$c93 = "POUR",
         peg$c94 = { type: "literal", value: "POUR", description: "\"POUR\"" },
         peg$c95 = "DE",
@@ -788,7 +788,10 @@ easyCodeParser = (function() {
           s0 = peg$c3;
         }
         if (s0 === peg$FAILED) {
-          s0 = peg$parsebooleanPrimary();
+          s0 = peg$parsenotPrioritary();
+          if (s0 === peg$FAILED) {
+            s0 = peg$parsebooleanPrimary();
+          }
         }
       }
 
@@ -2657,188 +2660,194 @@ easyCodeParser = (function() {
     }
 
 
-      /**
-       * emlation of indexOf for old navigator
-       */
-      if (!Array.indexOf) {
-        Array.indexOf = [].indexOf ?
-          function (arr, obj, from) { return arr.indexOf(obj, from); }:
-          function (arr, obj, from) { // (for IE6)
-          var l = arr.length,
-            i = from ? parseInt( (1*from) + (from<0 ? l:0), 10) : 0;
-          i = i<0 ? 0 : i;
-          for (; i<l; i++) {
-            if (i in arr  &&  arr[i] === obj) { return i; }
-          }
-          return -1;
-          };
-      }
-      
-      if(!Array.isArray) {
-        Array.isArray = function(arg) {
-        return Object.prototype.toString.call(arg) === '[object Array]';
-        };
-      }
-      
-      /**
-       * create object with the current line and column
-       */
-      function computeOffset(param) {
-        if (param) {
-          param.offset = computeOffset();
-          return param;
-        }
-        return {line : line(), column : column(), offset : offset()};
-      }
-      
-      /**
-       * create of block of instruction
-       */
-      function createBlock(lines) {
-        var ret = [];
-        for (var i in lines) {
-          if (lines[i]) {
-            ret.push(lines[i]);
-            // check declare and var usage
-          }
-        }
-        
-        return ret;
-      }
-      
-      /**
-       * create a condition structure
-       */
-      function createCondition(test, yes, no, elseif) {
-        var condition = {
-          type : 'condition',
-          test : test,
-          yes : yes,
-          offset : computeOffset()
-        };
-        var currentIf = condition;
-        if (elseif && elseif.length > 0) {
-          for (var i in elseif) {
-            currentIf.no = [elseif[i]];
-            currentIf = elseif[i];
-          }
-        }
-        currentIf.no = no;
-        return condition;
-      }
-      
-      /**
-       * créé une action d'affectation
-       */
-      function createAffectation(varname, expression) {
-        return {type : 'command', commandName : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
-      }
-      
-      function createVar(name, index, attribute) {
-        if (Array.isArray(name)) {
-          name = name.join('');
-        }
-        
-        return {
-          type : 'var',
-          name : name.toUpperCase(),
-          offset : computeOffset(),
-          index : index,
-          attribute : attribute
-        }
-      }
-      
-      
-      // priority of operations
-      var operationPriority = {
-        "-" : 1,
-        "+" : 1,
-        "&&" : 3,
-        "||" : 2,
-        "*" : 0,
-        "/" : 0,
-        "%" : 0
-      }
-      
-      /**
-       * create an arithmetique or boolean instruction
-       */
-      function CreateOperation(operation, left, right, type) {
-        if (right 
-            && right.operation 
-            && !right.priority 
-            && operationPriority[right.operation] == operationPriority[operation]
-            && right.type == type
-          ) {
-          // récupération de l'element le plus à droites
-          // il faut en fait ajouter l'operation à la gauche de l'operation de droit
-          // mostLeft représente le dernier objet qui a un element à gauche
-          var mostLeft = right;
-          while (mostLeft.left.left && !mostLeft.left.priority && mostLeft.left.type == mostLeft.type) {
-            mostLeft = mostLeft.left;
-          }
-          
-          // on va recréer l'operation courrante dans la partie la plus à gauche
-          mostLeft.left = CreateArithmetique(operation, left , mostLeft.left);
-          return right;
-        }
-        
-        return {
-          type : type,
-          priority : false,
-          operation : operation,    
-          left : left,
-          right : right,
-          offset : computeOffset()
-        }
-      }
-      
-      function CreateArithmetique(operation, left, right) {
-        return CreateOperation(operation, left, right, "numerique");
-      }
-      
-      function CreateArithmetiqueBoolean(operation, left, right) {
-        return CreateOperation(operation, left, right, "boolean");
-      }
-      
-      /**
-       * call when a function is call on a other function
-       * as test.test().test()
-       */
-      function ChangeLastAttributeByMethod(variable, methodParameters, nextAccess) {
-        var varForAddnextAccess = null;
-        if (!variable.attribute) {
-          variable.type = "function"
-          variable.params = methodParameters;
-          varForAddnextAccess = variable;
-        } else {    
-          var lastAttribute = variable;
-          while (variable.attribute && variable.attribute.attribute) {
-            lastAttribute = variable.attribute;
-          }
-          
-          lastAttribute.method = {
-            name : lastAttribute.attribute.name,
-            params : methodParameters
-          };
-          
-          delete lastAttribute.attribute;
-          varForAddnextAccess = lastAttribute;
-        }
-        
-        if (nextAccess) {
-          if (nextAccess.type == "function") {
-            varForAddnextAccess.method = nextAccess;
-            delete nextAccess.type;
-          } else {
-            varForAddnextAccess.attribute = nextAccess;
-          }
-        }
-        
-        return variable;
-      }
-      
-      
+    	/**
+    	 * emlation of indexOf for old navigator
+    	 */
+    	if (!Array.indexOf) {
+    	  Array.indexOf = [].indexOf ?
+    		  function (arr, obj, from) { return arr.indexOf(obj, from); }:
+    		  function (arr, obj, from) { // (for IE6)
+    			var l = arr.length,
+    				i = from ? parseInt( (1*from) + (from<0 ? l:0), 10) : 0;
+    			i = i<0 ? 0 : i;
+    			for (; i<l; i++) {
+    			  if (i in arr  &&  arr[i] === obj) { return i; }
+    			}
+    			return -1;
+    		  };
+    	}
+    	
+    	if(!Array.isArray) {
+    	  Array.isArray = function(arg) {
+    		return Object.prototype.toString.call(arg) === '[object Array]';
+    	  };
+    	}
+    	
+    	/**
+    	 * create object with the current line and column
+    	 */
+    	function computeOffset(param) {
+    		if (param) {
+    			param.offset = computeOffset();
+    			return param;
+    		}
+    		return {line : line(), column : column(), offset : offset()};
+    	}
+    	
+    	/**
+    	 * create of block of instruction
+    	 */
+    	function createBlock(lines) {
+    		var ret = [];
+    		for (var i in lines) {
+    			if (lines[i]) {
+    				ret.push(lines[i]);
+    				// check declare and var usage
+    			}
+    		}
+    		
+    		return ret;
+    	}
+    	
+    	/**
+    	 * create a condition structure
+    	 */
+    	function createCondition(test, yes, no, elseif) {
+    		var condition = {
+    			type : 'condition',
+    			test : test,
+    			yes : yes,
+    			offset : computeOffset()
+    		};
+    		var currentIf = condition;
+    		if (elseif && elseif.length > 0) {
+    			for (var i in elseif) {
+    				currentIf.no = [elseif[i]];
+    				currentIf = elseif[i];
+    			}
+    		}
+    		currentIf.no = no;
+    		return condition;
+    	}
+    	
+    	/**
+    	 * créé une action d'affectation
+    	 */
+    	function createAffectation(varname, expression) {
+    		return {type : 'command', commandName : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
+    	}
+    	
+    	function createVar(name, index, attribute) {
+    		if (Array.isArray(name)) {
+    			name = name.join('');
+    		}
+    		
+    		return {
+    			type : 'var',
+    			name : name.toUpperCase(),
+    			offset : computeOffset(),
+    			index : index,
+    			attribute : attribute
+    		}
+    	}
+    	
+    	var languageKeyWord = ['VRAI', 'FAUX', 'NULL', 'PARENT']
+    	function checkVarName(varname) {
+    		if (Array.indexOf(languageKeyWord, varname) >= 0) {
+    			throw new SyntaxError(varname + ' et un nom reservé.');
+    		}
+    	}
+    	
+    	// priority of operations
+    	var operationPriority = {
+    		"-" : 1,
+    		"+" : 1,
+    		"&&" : 3,
+    		"||" : 2,
+    		"*" : 0,
+    		"/" : 0,
+    		"%" : 0
+    	}
+    	
+    	/**
+    	 * create an arithmetique or boolean instruction
+    	 */
+    	function CreateOperation(operation, left, right, type) {
+    		if (right 
+    				&& right.operation 
+    				&& !right.priority 
+    				&& operationPriority[right.operation] == operationPriority[operation]
+    				&& right.type == type
+    			) {
+    			// récupération de l'element le plus à droites
+    			// il faut en fait ajouter l'operation à la gauche de l'operation de droit
+    			// mostLeft représente le dernier objet qui a un element à gauche
+    			var mostLeft = right;
+    			while (mostLeft.left.left && !mostLeft.left.priority && mostLeft.left.type == mostLeft.type) {
+    				mostLeft = mostLeft.left;
+    			}
+    			
+    			// on va recréer l'operation courrante dans la partie la plus à gauche
+    			mostLeft.left = CreateArithmetique(operation, left , mostLeft.left);
+    			return right;
+    		}
+    		
+    		return {
+    			type : type,
+    			priority : false,
+    			operation : operation,		
+    			left : left,
+    			right : right,
+    			offset : computeOffset()
+    		}
+    	}
+    	
+    	function CreateArithmetique(operation, left, right) {
+    		return CreateOperation(operation, left, right, "numerique");
+    	}
+    	
+    	function CreateArithmetiqueBoolean(operation, left, right) {
+    		return CreateOperation(operation, left, right, "boolean");
+    	}
+    	
+    	/**
+    	 * call when a function is call on a other function
+    	 * as test.test().test()
+    	 */
+    	function ChangeLastAttributeByMethod(variable, methodParameters, nextAccess) {
+    		var varForAddnextAccess = null;
+    		if (!variable.attribute) {
+    			variable.type = "function"
+    			variable.params = methodParameters;
+    			varForAddnextAccess = variable;
+    		} else {		
+    			var lastAttribute = variable;
+    			while (variable.attribute && variable.attribute.attribute) {
+    				lastAttribute = variable.attribute;
+    			}
+    			
+    			lastAttribute.method = {
+    				name : lastAttribute.attribute.name,
+    				params : methodParameters
+    			};
+    			
+    			delete lastAttribute.attribute;
+    			varForAddnextAccess = lastAttribute;
+    		}
+    		
+    		if (nextAccess) {
+    			if (nextAccess.type == "function") {
+    				varForAddnextAccess.method = nextAccess;
+    				delete nextAccess.type;
+    			} else {
+    				varForAddnextAccess.attribute = nextAccess;
+    			}
+    		}
+    		
+    		return variable;
+    	}
+    	
+    	
 
 
     peg$result = peg$startRuleFunction();

@@ -96,6 +96,12 @@
 		}
 	}
 	
+	var languageKeyWord = ['VRAI', 'FAUX', 'NULL', 'PARENT']
+	function checkVarName(varname) {
+		if (Array.indexOf(languageKeyWord, varname) >= 0) {
+			throw new SyntaxError(varname + ' et un nom reservé.');
+		}
+	}
 	
 	// priority of operations
 	var operationPriority = {
@@ -245,6 +251,7 @@ booleanPrimary
 comparaison 
 	= left:booleanPrimary eatSpace oper:("=="/"!=") eatSpace right:booleanPrimary {return {type : 'comparaison', left : left, right : right, operation : oper}}
 	/ left:nonBooleanExpression eatSpace oper:(">="/"<="/"<"/ ">"/ "=="/"!=") eatSpace right:nonBooleanExpression {return {type : 'comparaison', left : left, right : right, operation : oper}}
+	/ nonBooleanExpression
 	/ booleanPrimary
 	
 	
@@ -278,7 +285,7 @@ primitive =
 	
 // define a variable
 define 
-	= 'DEFINIR'i anySpace varname:varName anySpace type:types {return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})}
+	= 'DEFINIR'i anySpace varname:varName anySpace type:types {checkVarName(varname.name); return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})}
 // write an expression
 ecrire 
 	= 'ECRIRE'i anySpace expression:expression {return computeOffset({type : 'command', commandName : 'write', params : [expression]})}
