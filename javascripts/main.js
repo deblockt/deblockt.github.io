@@ -30,6 +30,12 @@ require.config({
 			],
 			exports: 'angularRoute'
 		},
+		'terminalEmulator': {
+			deps : [
+				'angular'
+			],
+			exports : 'terminalEmulator'
+		},
 		app : {
 			deps: [
 				'angular',
