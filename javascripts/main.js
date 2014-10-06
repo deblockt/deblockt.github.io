@@ -26,7 +26,7 @@ require.config({
 		},
 		'angularRoute': {		
 			deps : [
-				'angular',
+				'angular'
 			],
 			exports: 'angularRoute'
 		},

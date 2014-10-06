@@ -70,7 +70,8 @@
 
 			this.currentLine = 0;
 			this.onEndFunction = [];
-
+			this.fatalError = false;
+			
 			// the child currently run
 			this.proccessingChild = undefined;
 			if (this.getParent()) {
@@ -99,12 +100,26 @@
 	 		runLine : function(line, endOfLine){
 	 			var runNextLine = true;
 	 			var _this = this;
-	 			this.lineProcessor.runLine(line, this.context, this, function(){
-	 				endOfLine && endOfLine();
-	 				_this.runNextLine();
-	 			});	
+				try {
+					this.lineProcessor.runLine(line, this.context, this, function(){
+						endOfLine && endOfLine();
+						_this.runNextLine();
+					});	
+				} catch (e) {
+					this.haveFatalError();
+					output.error(e.toString());
+				}				
 	 		},
+			haveFatalError : function() {
+				this.fatalError = true;
+				if (this.getParent()) {
+					this.getParent().haveFatalError();
+				}
+			},
 			runNextLine : function() {
+				if (this.fatalError) {
+					return;
+				}
 				if (this.currentLine < this.lines.length) {
 	 				// call run line function (not in context class)
 	 				var _this = this;
@@ -127,7 +142,7 @@
 	 		 * run a suite of line as child
 	 		 */
 	 		runChildBlock : function(block, onEndFunction) {
-	 			var subContext = new Context(this.context);
+				var subContext = new Context(this.context);
 	 			var childBlockRunner = new BlockRunner(subContext, block, this, this.lineProcessor);
 	 			childBlockRunner.registerEndFunction(onEndFunction);
 	 			var _this = this;

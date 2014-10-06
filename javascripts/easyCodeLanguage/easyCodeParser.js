@@ -109,32 +109,32 @@ easyCodeParser = (function() {
         peg$c74 = { type: "class", value: "[^*]", description: "[^*]" },
         peg$c75 = "*/",
         peg$c76 = { type: "literal", value: "*/", description: "\"*/\"" },
-        peg$c77 = "SI",
+        peg$c77 = "si",
         peg$c78 = { type: "literal", value: "SI", description: "\"SI\"" },
         peg$c79 = null,
-        peg$c80 = "FIN_SI",
+        peg$c80 = "fin_si",
         peg$c81 = { type: "literal", value: "FIN_SI", description: "\"FIN_SI\"" },
         peg$c82 = function(expr, blockYes, blockElseIf, blockNo) { return createCondition(expr, blockYes, blockNo, blockElseIf)},
-        peg$c83 = "SI_NON",
+        peg$c83 = "si_non",
         peg$c84 = { type: "literal", value: "SI_NON", description: "\"SI_NON\"" },
-        peg$c85 = "SI_NON SI",
+        peg$c85 = "si_non si",
         peg$c86 = { type: "literal", value: "SI_NON SI", description: "\"SI_NON SI\"" },
         peg$c87 = function(expr, block) {return createCondition(expr, block)},
-        peg$c88 = "TANT_QUE",
+        peg$c88 = "tant_que",
         peg$c89 = { type: "literal", value: "TANT_QUE", description: "\"TANT_QUE\"" },
-        peg$c90 = "FIN_TANT_QUE",
+        peg$c90 = "fin_tant_que",
         peg$c91 = { type: "literal", value: "FIN_TANT_QUE", description: "\"FIN_TANT_QUE\"" },
         peg$c92 = function(expr, block) {return {type : 'while', test : expr, block : block, offset : computeOffset()}},
-        peg$c93 = "POUR",
+        peg$c93 = "pour",
         peg$c94 = { type: "literal", value: "POUR", description: "\"POUR\"" },
-        peg$c95 = "DE",
+        peg$c95 = "de",
         peg$c96 = { type: "literal", value: "DE", description: "\"DE\"" },
-        peg$c97 = "A",
+        peg$c97 = "a",
         peg$c98 = { type: "literal", value: "A", description: "\"A\"" },
-        peg$c99 = "FIN_POUR",
+        peg$c99 = "fin_pour",
         peg$c100 = { type: "literal", value: "FIN_POUR", description: "\"FIN_POUR\"" },
         peg$c101 = function(varname, start, end, block) {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset()}},
-        peg$c102 = "DANS",
+        peg$c102 = "dans",
         peg$c103 = { type: "literal", value: "DANS", description: "\"DANS\"" },
         peg$c104 = function(varname, arrayName, block) {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}},
         peg$c105 = { type: "other", description: "nom de variable (caract\xE9re acc\xE9pt\xE9s a-z A-Z et _)" },
@@ -1365,8 +1365,8 @@ easyCodeParser = (function() {
       var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
 
       s0 = peg$currPos;
-      if (input.substr(peg$currPos, 2) === peg$c77) {
-        s1 = peg$c77;
+      if (input.substr(peg$currPos, 2).toLowerCase() === peg$c77) {
+        s1 = input.substr(peg$currPos, 2);
         peg$currPos += 2;
       } else {
         s1 = peg$FAILED;
@@ -1401,8 +1401,8 @@ easyCodeParser = (function() {
                       s8 = peg$c79;
                     }
                     if (s8 !== peg$FAILED) {
-                      if (input.substr(peg$currPos, 6) === peg$c80) {
-                        s9 = peg$c80;
+                      if (input.substr(peg$currPos, 6).toLowerCase() === peg$c80) {
+                        s9 = input.substr(peg$currPos, 6);
                         peg$currPos += 6;
                       } else {
                         s9 = peg$FAILED;
@@ -1456,8 +1456,8 @@ easyCodeParser = (function() {
       var s0, s1, s2, s3, s4;
 
       s0 = peg$currPos;
-      if (input.substr(peg$currPos, 6) === peg$c83) {
-        s1 = peg$c83;
+      if (input.substr(peg$currPos, 6).toLowerCase() === peg$c83) {
+        s1 = input.substr(peg$currPos, 6);
         peg$currPos += 6;
       } else {
         s1 = peg$FAILED;
@@ -1503,8 +1503,8 @@ easyCodeParser = (function() {
       var s0, s1, s2, s3, s4, s5, s6;
 
       s0 = peg$currPos;
-      if (input.substr(peg$currPos, 9) === peg$c85) {
-        s1 = peg$c85;
+      if (input.substr(peg$currPos, 9).toLowerCase() === peg$c85) {
+        s1 = input.substr(peg$currPos, 9);
         peg$currPos += 9;
       } else {
         s1 = peg$FAILED;
@@ -1562,8 +1562,8 @@ easyCodeParser = (function() {
       var s0, s1, s2, s3, s4, s5, s6;
 
       s0 = peg$currPos;
-      if (input.substr(peg$currPos, 8) === peg$c88) {
-        s1 = peg$c88;
+      if (input.substr(peg$currPos, 8).toLowerCase() === peg$c88) {
+        s1 = input.substr(peg$currPos, 8);
         peg$currPos += 8;
       } else {
         s1 = peg$FAILED;
@@ -1584,8 +1584,8 @@ easyCodeParser = (function() {
             if (s4 !== peg$FAILED) {
               s5 = peg$parseblock();
               if (s5 !== peg$FAILED) {
-                if (input.substr(peg$currPos, 12) === peg$c90) {
-                  s6 = peg$c90;
+                if (input.substr(peg$currPos, 12).toLowerCase() === peg$c90) {
+                  s6 = input.substr(peg$currPos, 12);
                   peg$currPos += 12;
                 } else {
                   s6 = peg$FAILED;
@@ -1627,8 +1627,8 @@ easyCodeParser = (function() {
       var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14;
 
       s0 = peg$currPos;
-      if (input.substr(peg$currPos, 4) === peg$c93) {
-        s1 = peg$c93;
+      if (input.substr(peg$currPos, 4).toLowerCase() === peg$c93) {
+        s1 = input.substr(peg$currPos, 4);
         peg$currPos += 4;
       } else {
         s1 = peg$FAILED;
@@ -1641,8 +1641,8 @@ easyCodeParser = (function() {
           if (s3 !== peg$FAILED) {
             s4 = peg$parseanySpace();
             if (s4 !== peg$FAILED) {
-              if (input.substr(peg$currPos, 2) === peg$c95) {
-                s5 = peg$c95;
+              if (input.substr(peg$currPos, 2).toLowerCase() === peg$c95) {
+                s5 = input.substr(peg$currPos, 2);
                 peg$currPos += 2;
               } else {
                 s5 = peg$FAILED;
@@ -1658,8 +1658,8 @@ easyCodeParser = (function() {
                   if (s7 !== peg$FAILED) {
                     s8 = peg$parseanySpace();
                     if (s8 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 65) {
-                        s9 = peg$c97;
+                      if (input.substr(peg$currPos, 1).toLowerCase() === peg$c97) {
+                        s9 = input.charAt(peg$currPos);
                         peg$currPos++;
                       } else {
                         s9 = peg$FAILED;
@@ -1683,8 +1683,8 @@ easyCodeParser = (function() {
                             if (s12 !== peg$FAILED) {
                               s13 = peg$parseblock();
                               if (s13 !== peg$FAILED) {
-                                if (input.substr(peg$currPos, 8) === peg$c99) {
-                                  s14 = peg$c99;
+                                if (input.substr(peg$currPos, 8).toLowerCase() === peg$c99) {
+                                  s14 = input.substr(peg$currPos, 8);
                                   peg$currPos += 8;
                                 } else {
                                   s14 = peg$FAILED;
@@ -1752,8 +1752,8 @@ easyCodeParser = (function() {
       }
       if (s0 === peg$FAILED) {
         s0 = peg$currPos;
-        if (input.substr(peg$currPos, 4) === peg$c93) {
-          s1 = peg$c93;
+        if (input.substr(peg$currPos, 4).toLowerCase() === peg$c93) {
+          s1 = input.substr(peg$currPos, 4);
           peg$currPos += 4;
         } else {
           s1 = peg$FAILED;
@@ -1766,8 +1766,8 @@ easyCodeParser = (function() {
             if (s3 !== peg$FAILED) {
               s4 = peg$parseanySpace();
               if (s4 !== peg$FAILED) {
-                if (input.substr(peg$currPos, 4) === peg$c102) {
-                  s5 = peg$c102;
+                if (input.substr(peg$currPos, 4).toLowerCase() === peg$c102) {
+                  s5 = input.substr(peg$currPos, 4);
                   peg$currPos += 4;
                 } else {
                   s5 = peg$FAILED;
@@ -1788,8 +1788,8 @@ easyCodeParser = (function() {
                       if (s8 !== peg$FAILED) {
                         s9 = peg$parseblock();
                         if (s9 !== peg$FAILED) {
-                          if (input.substr(peg$currPos, 8) === peg$c99) {
-                            s10 = peg$c99;
+                          if (input.substr(peg$currPos, 8).toLowerCase() === peg$c99) {
+                            s10 = input.substr(peg$currPos, 8);
                             peg$currPos += 8;
                           } else {
                             s10 = peg$FAILED;
@@ -2868,7 +2868,6 @@ easyCodeParser = (function() {
     parse:       parse
   };
 })();
-
 if (define) {
   define(function(){
     return easyCodeParser;

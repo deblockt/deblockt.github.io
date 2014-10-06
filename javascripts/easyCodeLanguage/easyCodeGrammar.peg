@@ -306,19 +306,19 @@ multilineComment
 ************** STRUCTURE CONDITIONNELLE *****************************************
 ********************************************************************************/
 ifblock
-	= 'SI' anySpace expr:booleanExpression eatSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
+	= 'SI'i anySpace expr:booleanExpression eatSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'i  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
 ifelseblock
-	= 'SI_NON' eatSpace [\n] block:block {return block}
+	= 'SI_NON'i eatSpace [\n] block:block {return block}
 ifelseifblock
-	= 'SI_NON SI' anySpace expr:booleanExpression eatSpace [\n] block:block {return createCondition(expr, block)}
+	= 'SI_NON SI'i anySpace expr:booleanExpression eatSpace [\n] block:block {return createCondition(expr, block)}
 	
 // while boucle
 whileblock 
-	= 'TANT_QUE' anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE' {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
+	= 'TANT_QUE'i anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE'i {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
 
 foreachblock 
-	= 'POUR' anySpace varname:varName anySpace 'DE' anySpace start:(integer/car) anySpace 'A' anySpace end:(integer/car) [\n] block:block 'FIN_POUR' {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset()}}
-	 /'POUR' anySpace varname:varName anySpace 'DANS' anySpace arrayName:varName [\n] block:block 'FIN_POUR' {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}}
+	= 'POUR'i anySpace varname:varName anySpace 'DE'i anySpace start:(integer/car) anySpace 'A'i anySpace end:(integer/car) [\n] block:block 'FIN_POUR'i {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset()}}
+	 /'POUR'i anySpace varname:varName anySpace 'DANS'i anySpace arrayName:varName [\n] block:block 'FIN_POUR'i {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}}
 
 	 
 /*************************************************************************
