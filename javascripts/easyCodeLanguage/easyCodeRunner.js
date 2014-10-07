@@ -4,7 +4,15 @@
 
  define(function(){
  	
- 	
+ 	var FUNCTIONS = {
+		'aleatoire' : function(min, max){
+			min = min || 0;
+			max = max || 100;
+			return Math.floor(Math.random() * max + min);
+		}
+	}
+	
+	var SKIP_FUNCTION = ['eval'];
 
  	var runner = {};
 
@@ -19,25 +27,72 @@
 	 	 */
 		var Context = function(parent) {
 			this.parent = parent;
+			this.functions = {};
+			this.vars = {};
 		}
 
 		Context.prototype = {
 			isset : function(varName, exceptionMode, offset) {
-				if  (varName in this) {
+				if  (varName in this.vars) {
 					return true;
 				}
 				var parentIsset = this.getParent() && this.getParent().isset(varName, exceptionMode, offset);
 				if (!parentIsset && exceptionMode) {
-					throw new RuntimeException('La variable ' + varName + ' n\'est pas definie', offset);
+					throw new RuntimeException('La variable ' + varName + ' n\'est pas definie.', offset);
 				}
 				return parentIsset || false;
 			},
+			formatFunctionName : function(name) {
+				var DEFAULT_REGEX = /[-_]+(.)?/g;
+
+				function toUpper(match, group1) {
+					return group1 ? group1.toUpperCase() : '';
+				}
+				
+				var name = name.replace(DEFAULT_REGEX, toUpper);
+				// remove function to skip for security raison
+				if (Array.indexOf(SKIP_FUNCTION, name) >= 0) {
+					return '';
+				}
+				return name;
+			},
+			issetFunction : function(functionName, exceptionMode, offset) {
+				var isset = functionName in FUNCTIONS 
+					|| functionName in this.functions 
+					|| this.formatFunctionName(functionName) in window 
+					|| (this.getParent() && this.getParent().issetFunction(functionName));
+				
+				if (!isset && exceptionMode) {
+					throw new RuntimeException('La fonction ' + functionName + ' n\'existe pas.', offset);
+				}
+				
+				return isset;
+			},
 			getVar : function(varName) {
-				if (this[varName]) {
-					return this[varName];
+				if (this.vars[varName]) {
+					return this.vars[varName];
 				}
 				if (this.getParent()) {
 					return this.getParent().getVar(varName);
+				}
+				return undefined;
+			},
+			getFunction : function(functionName) {
+				if (functionName in FUNCTIONS) {
+					return FUNCTIONS[functionName];
+				} 
+				
+				if (functionName in this.functions) {
+					return this.functions[functionName];
+				}
+				
+				var formatFunction = this.formatFunctionName(functionName);
+				if (formatFunction in window) {
+					return window[formatFunction];
+				}
+				
+				if (this.getParent()) {
+					return this.getParent().getFunction(functionName);
 				}
 				return undefined;
 			},
@@ -52,7 +107,7 @@
 				this.getVar(varName).value = value;
 			},
 			defineVar : function(varName, type) {
-				this[varName] = {
+				this.vars[varName] = {
 					type : type,
 					value : undefined
 				};
@@ -98,7 +153,6 @@
 	 		 * run a line of code
 	 		 */
 	 		runLine : function(line, endOfLine){
-	 			var runNextLine = true;
 	 			var _this = this;
 				try {
 					this.lineProcessor.runLine(line, this.context, this, function(){
@@ -108,6 +162,7 @@
 				} catch (e) {
 					this.haveFatalError();
 					output.error(e.toString());
+					console.log(e);
 				}				
 	 		},
 			haveFatalError : function() {
@@ -261,13 +316,22 @@
  			}
 
  			if (expression.type == 'function') {
- 				if (window[expression.name]) {
- 					// ajouter un traitement pour les fonctions
- 					output.error('Les fonction ne sont pas gérée pour le moment')
+ 				context.issetFunction(expression.name, true, expression.offset);
+				
+				var easyCodefunction = context.getFunction(expression.name);
+				if (easyCodefunction) {
+					var args = [];
+					
+					for (var i in expression.params) {
+						args.push(evaluateExpression(expression.params[i], context));
+					}
+ 					// appeller call sur la fonction
+					return easyCodefunction.apply(undefined, args);
  				} else {
  					// throw error
  					throw new RuntimeException('La fonction ' + expression.name + ' n\'existe pas', expression.offset);
  				}
+				return undefined;
  			}
  		}
 
@@ -326,7 +390,9 @@
 
 	 	var runLineProcessor = {
 	 		runLine : function(line, context, blockRunner, nextLineFunction) {
-		 		if (line.type && line.type == 'command') {
+		 		console.log(line);
+				var runNextLine = true;
+				if (line.type && line.type == 'command') {
 	 				runNextLine = runCommand(line, context, nextLineFunction);
 	 			} else if (line.type && line.type == 'condition') {
 	 				var testResult = evaluateExpression(line.test, context);
@@ -370,7 +436,9 @@
 
 	 				nextStep();
 	 				runNextLine = false;
-	 			}
+	 			} else if (line.type && line.type == 'function') {
+					evaluateExpression(line, context);
+				}
 
 	 			// run the next line
 	 			if (runNextLine) {

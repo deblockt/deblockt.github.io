@@ -163,6 +163,7 @@
 		var varForAddnextAccess = null;
 		if (!variable.attribute) {
 			variable.type = "function"
+			variable.name = variable.name.toLowerCase();
 			variable.params = methodParameters;
 			varForAddnextAccess = variable;
 		} else {		
@@ -172,7 +173,7 @@
 			}
 			
 			lastAttribute.method = {
-				name : lastAttribute.attribute.name,
+				name : lastAttribute.attribute.name.toLowerCase(),
 				params : methodParameters
 			};
 			
@@ -215,6 +216,7 @@ codeLine =
    / ecrire
    / lire
    / affectation
+   / methodCall
    / [\n] {return undefined} // cas de la ligne vide
    ) [\n\ \t]* {return code}
 	

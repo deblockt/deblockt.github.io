@@ -417,19 +417,22 @@ easyCodeParser = (function() {
                       if (s2 === peg$FAILED) {
                         s2 = peg$parseaffectation();
                         if (s2 === peg$FAILED) {
-                          s2 = peg$currPos;
-                          if (peg$c4.test(input.charAt(peg$currPos))) {
-                            s3 = input.charAt(peg$currPos);
-                            peg$currPos++;
-                          } else {
-                            s3 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c5); }
+                          s2 = peg$parsemethodCall();
+                          if (s2 === peg$FAILED) {
+                            s2 = peg$currPos;
+                            if (peg$c4.test(input.charAt(peg$currPos))) {
+                              s3 = input.charAt(peg$currPos);
+                              peg$currPos++;
+                            } else {
+                              s3 = peg$FAILED;
+                              if (peg$silentFails === 0) { peg$fail(peg$c5); }
+                            }
+                            if (s3 !== peg$FAILED) {
+                              peg$reportedPos = s2;
+                              s3 = peg$c6();
+                            }
+                            s2 = s3;
                           }
-                          if (s3 !== peg$FAILED) {
-                            peg$reportedPos = s2;
-                            s3 = peg$c6();
-                          }
-                          s2 = s3;
                         }
                       }
                     }
@@ -2818,6 +2821,7 @@ easyCodeParser = (function() {
     		var varForAddnextAccess = null;
     		if (!variable.attribute) {
     			variable.type = "function"
+    			variable.name = variable.name.toLowerCase();
     			variable.params = methodParameters;
     			varForAddnextAccess = variable;
     		} else {		
@@ -2827,7 +2831,7 @@ easyCodeParser = (function() {
     			}
     			
     			lastAttribute.method = {
-    				name : lastAttribute.attribute.name,
+    				name : lastAttribute.attribute.name.toLowerCase(),
     				params : methodParameters
     			};
     			
@@ -2868,6 +2872,7 @@ easyCodeParser = (function() {
     parse:       parse
   };
 })();
+
 if (define) {
   define(function(){
     return easyCodeParser;
