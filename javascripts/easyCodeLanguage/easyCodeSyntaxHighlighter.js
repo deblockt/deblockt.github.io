@@ -297,9 +297,9 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
   };
   def(["text/easyCode-src"], {
     name: "easyCode",
-    keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
+    keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A DANS PAR FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
     blockKeywords: vblocKeyWord,
-    atoms: words("VIDE NOMBRE CHAINE BOOLEEN"),
+    atoms: words("VIDE NOMBRE CHAINE BOOLEEN TABLEAU"),
     modeProps: {fold: ["brace", "include"]}
   });
   

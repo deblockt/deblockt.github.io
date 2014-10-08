@@ -4,15 +4,7 @@
 
  define(function(){
  	
- 	var FUNCTIONS = {
-		'aleatoire' : function(min, max){
-			min = min || 0;
-			max = max || 100;
-			return Math.floor(Math.random() * max + min);
-		}
-	}
-	
-	var SKIP_FUNCTION = ['eval'];
+
 
  	var runner = {};
 
@@ -21,6 +13,30 @@
  	 * @param output an object for write this object must have 3 methodes error, info, write they have one string parameter
  	 */
  	runner.run = function(expression, output, input) {
+		var FUNCTIONS = {
+			'aleatoire' : function(min, max){
+				min = min || 0;
+				max = max || 100;
+				return Math.floor(Math.random() * max + min);
+			},
+			'racine_carree' : Math.sqrt,
+			'en_entier' : function(value) {
+				return parseInt(value, 10);
+			},
+			'taille' : function(value) {
+				checkType(value, 'array');
+				// TODO optimiser le traitement en créer une nouvelle structure de donnée pour la gestion des tableaux
+				// this is do for associative array
+				var size = 0;
+				for (var i in value) {
+					size++;
+				}
+				return size;
+			}
+		}
+		
+		var SKIP_FUNCTION = ['eval'];
+	
 		/**
 	 	 * context class
 	 	 * context contains line to execute, current scope var
@@ -102,9 +118,24 @@
 			getType : function(varName) {
 				return this.getVar(varName).type;
 			},
-			setValue : function(varName, value) {
+			setValue : function(varName, value, index) {
 				// TODO add type check
-				this.getVar(varName).value = value;
+				if (index != undefined) {
+					if (this.getType(varName) == 'array') {
+						if (this.getVar(varName).value == undefined) {
+							this.getVar(varName).value = [];
+						}
+						if (index == 'ADD_AT_END') {
+							this.getVar(varName).value.push(value);
+						} else {
+							this.getVar(varName).value[index] = value;
+						}
+					} else {
+						throw new RuntimeException('La variable ' + varName + ' n\'est pas un tableau.');
+					}
+				} else {	
+					this.getVar(varName).value = value;
+				}
 			},
 			defineVar : function(varName, type) {
 				this.vars[varName] = {
@@ -246,6 +277,10 @@
  		var evaluateOperation = function(left, right, operator, offset) {
  			switch (operator) {
  				case '+' :
+					if (typeof left == "string" || typeof right == "string") {
+						left = toString(left);
+						right = toString(right);
+					}
  					return left + right;
  				case '-' :
  					checkType(left, "number", offset);
@@ -308,9 +343,15 @@
  				context.isset(expression.name, true, expression.offset);
  				
 				var variable = context.getValue(expression.name);
+				if (expression.index != undefined) {
+					if (expression.index == 'ADD_AT_END') {
+						throw new RuntimeException('Vous devez préciser l\'indice de l\'element à accéder.', expression.offset);
+					}
+					var index = evaluateExpression(expression.index, context);
+					variable = variable[index];
+				}
 				if (variable == undefined) {
-					// TODO maybe throw error
-					output.error('La variable ' + expression.name + ' n\'est pas initialisée')
+					output.info('La variable ' + expression.name + (index != undefined ? '['+index+']': '') + ' n\'est pas initialisée')
 				}
 				return variable;
  			}
@@ -333,27 +374,56 @@
  				}
 				return undefined;
  			}
+			
+			if (expression.type == 'array') {
+				var ret = [];
+				for (var i in expression.elements) {
+					var element = expression.elements[i];
+					var value = evaluateExpression(element.expression, context);
+					if (element.name != undefined) {
+						ret[element.name] = value;
+					} else {
+						ret.push(value);
+					}
+				}
+				return ret;
+			}
  		}
 
+		/**
+		 * format value for write value
+		 */
+		var toString = function(value) {
+			if (Array.isArray(value)) {
+				return "[" + value.join(', ') + "]";
+			}	
+			return value;
+		}
+		
  		/**
  		 * run a command
  		 * write, read, affectation, define
  		 */
  		var runCommand = function(line, context, endFunction) {
  			if (line.commandName == 'write') {
-				output.write(evaluateExpression(line.params[0], context));
+				output.write(toString(evaluateExpression(line.params[0], context)));
 			} else if (line.commandName == 'define') {
 				context.defineVar(line.varname.name, line.vartype);
 			} else if (line.commandName == 'affectation') { 
 				context.isset(line.varname.name, true, line.offset);
 				var value = evaluateExpression(line.expression, context);
-				checkType(value, context.getType(line.varname.name), line.expression.offset || line.offset);
-				// TODO gérer l'index pour les tableaux
-				// TODO gérer les variables des objets
-				context.setValue(line.varname.name, value);
+				if (line.varname.index == undefined) {
+					checkType(value, context.getType(line.varname.name), line.expression.offset || line.offset);
+				}
+				// TODO gérer les variables des objets	
+				context.setValue(line.varname.name, value, line.varname.index);
 			} else if (line.commandName == 'read') {
+				var type = context.getType(line.varname.name);
+				if (type == 'array') {
+					output.info('Un tableau est une suite de valeurs séparée par des ";", par exemple 1;2;Bonjour;5');
+				}
 				input.read(function(value) { 						
-					var type = context.getType(line.varname.name);
+					
 					var translatedType = typeTranslation[type] || type;
 					
 					switch (type) {
@@ -365,7 +435,7 @@
 						break;
 						case 'boolean' :
 							if (value != '1' && value != '0' && value != 'vrai' && value != 'faux') {
-							output.info('L\'entrée doit être de type ' + translatedType + '. Entrez une nouvelle valeur (1, 0, vrai, faux)');
+								output.info('L\'entrée doit être de type ' + translatedType + '. Entrez une nouvelle valeur (1, 0, vrai, faux)');
 								return false;
 							}
 						break;
@@ -374,11 +444,13 @@
 					return true;
 				}, function(value){
 					var value = value;
-					var type = context.getType(line.varname.name);
+					
 					if (type == 'number') {
 						value = parseInt(value, 10);
 					} else if (type == 'boolean') {
 						value = value == '1' || value == 'vrai';
+					} else if (type == 'array') {
+						value = value.split(';');
 					}
 					context.setValue(line.varname.name, value);
 					endFunction && endFunction();
@@ -405,12 +477,13 @@
 	 				runNextLine = false;
 	 			} else if (line.type && line.type == 'for') {
 	 				context.isset(line.varname.name, true, line.offset);
-	 				var start = line.start - 1; // -1 because step begin by ++
+					var step = line.step || 1;
+					var start = line.start - step; // -1 because step begin by ++
 	 				var end = line.end;
-
+					
 	 				context.setValue(line.varname.name, start);
 	 				var nextStep = function(){ 			
-	 					start++;
+	 					start += step;
 	 					if (start <= end) {
 	 						context.setValue(line.varname.name, start);
 	 						blockRunner.runChildBlock(line.block, nextStep);
@@ -421,7 +494,36 @@
 
 	 				nextStep();
 	 				runNextLine = false;
-	 			} else if (line.type && line.type == 'while') {
+	 			} else if (line.type && line.type == 'forEach') {
+					var varname = line.varname.name;
+					var indiceVarname = (varname+'_index').toUpperCase();
+					context.isset(varname, true, line.offset);
+					context.defineVar(indiceVarname, 'NOMBRE');
+					var array = evaluateExpression(line.array ,context);
+					// get keys
+					var keys = [];
+					for (var i in array) {
+						keys.push(i);
+					}
+					var arrayLength = keys.length;
+					var i = -1;	// -1 because step begin by ++	
+						
+					var nextStep = function(){ 			
+	 					i++;
+	 					if (i < arrayLength) {
+							var key = keys[i];
+							var value = array[key];
+	 						context.setValue(indiceVarname, key);
+							context.setValue(varname, value);
+							blockRunner.runChildBlock(line.block, nextStep);
+	 					} else {
+	 						nextLineFunction && nextLineFunction();
+	 					}
+	 				};
+
+	 				nextStep();
+	 				runNextLine = false;						
+				} else if (line.type && line.type == 'while') {
 	 				var test = line.test;
 	 				var block = line.block;
 

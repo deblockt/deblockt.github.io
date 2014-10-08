@@ -1,9 +1,4 @@
-// TODO gérer les expressions du style test * 5 qui ne fonctionne pas alors que 5 * test et (5 * test) fonctionne
 // TODO gérer la detection des variables non initialisée
-// TODO gérer la création de tableau [1,2,3,4,5]
-// TODO gérer l'ajout d'element dans un tableau
-// TODO gérer le problème pour l'expression ECRIRE "Valeur : " + variable
-// TODO ajouter un step pour la boucle for
 {
 	/**
 	 * emlation of indexOf for old navigator
@@ -202,7 +197,7 @@ start
 	= block:block {return block}
 
 block
-	= codeLines:codeLine* {return createBlock(codeLines)}
+	= [\n]* codeLines:codeLine* {return createBlock(codeLines)}
 	
 // list all possible expression
 codeLine = 
@@ -279,7 +274,19 @@ primitive =
 	/ integer
 	/ methodCall
 	/ varName 
+	/ arrayDefinition
 	/ "(" eatSpace calc:notPrioritary eatSpace ")" {calc.priority = true; return calc}
+	
+arrayDefinition
+	= '[' eatSpace elements:arrayElements* eatSpace lastElement:arrayElement? eatSpace ']' {if (lastElement) {elements.push(lastElement)}; return {offset : computeOffset(), elements : elements, type : 'array'}}
+
+arrayElements 
+	= arrayElement:arrayElement eatSpace ';' eatSpace {return arrayElement}
+	
+arrayElement
+	= name:nameOfParameter eatSpace ':' eatSpace expression:expression eatSpace  {return {expression : expression, name : name}}
+	/ expression:expression eatSpace {return {expression : expression}}
+
 	
 /************************************************************************************
 ***** INSTRUCTION DE BASE DU LANGUAGE ***********************************************
@@ -308,29 +315,34 @@ multilineComment
 ************** STRUCTURE CONDITIONNELLE *****************************************
 ********************************************************************************/
 ifblock
-	= 'SI'i anySpace expr:booleanExpression eatSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'i  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
+	= 'SI'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'i  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
 ifelseblock
-	= 'SI_NON'i eatSpace [\n] block:block {return block}
+	= 'SI_NON'i eatSpaceWithoutBackSpace [\n] block:block {return block}
 ifelseifblock
-	= 'SI_NON SI'i anySpace expr:booleanExpression eatSpace [\n] block:block {return createCondition(expr, block)}
+	= 'SI_NON SI'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] block:block {return createCondition(expr, block)}
 	
 // while boucle
 whileblock 
-	= 'TANT_QUE'i anySpace expr:booleanExpression [\n] block:block 'FIN_TANT_QUE'i {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
+	= 'TANT_QUE'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] block:block 'FIN_TANT_QUE'i {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
 
 foreachblock 
-	= 'POUR'i anySpace varname:varName anySpace 'DE'i anySpace start:(integer/car) anySpace 'A'i anySpace end:(integer/car) [\n] block:block 'FIN_POUR'i {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset()}}
-	 /'POUR'i anySpace varname:varName anySpace 'DANS'i anySpace arrayName:varName [\n] block:block 'FIN_POUR'i {return {type : 'forArray', varname : varname, arrayName : arrayName, block : block}}
+	= 'POUR'i anySpace varname:varName anySpace 'DE'i anySpace start:(integer/car) anySpace 'A'i anySpace end:(integer/car) step:step? eatSpaceWithoutBackSpace [\n] block:block 'FIN_POUR'i {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset(), step : step}}
+	 /'POUR'i anySpace varname:varName anySpace 'DANS'i anySpace array:(varName/arrayDefinition) eatSpaceWithoutBackSpace [\n] block:block 'FIN_POUR'i {return {type : 'forEach', varname : varname, array : array, block : block}}
 
-	 
+step 
+	= anySpace 'PAR' anySpace integer:integer {return integer}
+	
 /*************************************************************************
 ******* PREDICAT DE L'APPLICATION ****************************************
 *************************************************************************/
 // regex for varname
 varName "nom de variable (caractére accéptés a-z A-Z et _)"
-	= varname:[a-zA-Z\_]+ eatSpace '[' eatSpace index:(integer/string/car) eatSpace ']' {return createVar(varname, index)}
+	= varname:[a-zA-Z\_]+ eatSpace '[' eatSpace index:(integer/string/car)? eatSpace ']' {return createVar(varname, index == undefined ? 'ADD_AT_END' : index )}
 	/ varname:[a-zA-Z\_]+ eatSpace attribute:attributAccess {return createVar(varname, undefined, {name : attribute.name})}
 	/ varname:[a-zA-Z\_]+ {return createVar(varname)}
+	
+nameOfParameter
+	= varname:[a-zA-Z\_]+ {return varname.join('')}
 	
 attributAccess = 
 	'.' varname:varName {return varname}
@@ -367,8 +379,9 @@ car "caractère exemple : 'a'"
 	/ methodCall
 	/ varName
 	
-integer "integer"
-  = digits:[0-9]+ { return parseInt(digits.join(""), 10); }
+integer "nombre"
+  = digits:[0-9]+ ('.'/',') decimal:[0-9]+ { return parseFloat(digits.join('') + '.' + decimal.join('')); }
+  / digits:[0-9]+ { return parseInt(digits.join(''), 10); }
   / methodCall
   / varName
   
@@ -380,6 +393,8 @@ integer "integer"
 anySpace "espace"
 	= [\ \t]+ {return undefined}
 
+eatSpaceWithoutBackSpace
+	= [\ \t]* {return undefined} 
 eatSpace
-	= [\ \t]* {return undefined}
+	= [\ \t\n]* {return undefined}
 	
