@@ -13,12 +13,18 @@
 	app.controller('easyCodeController', function($scope){
 		
 		// add header properties for phone support
+		
+		
 		$scope.editor = {
 			options : {
 				lineNumbers: true,
 				tabSize : 2,							
 				mode : 'text/easyCode-src',
-				extraKeys: {"Ctrl-Space": "autocomplete"}
+				gutters: ['CodeMirror-lint-markers', 'CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+				extraKeys: {"Ctrl-Space": "autocomplete"},
+				lint : {async : true} ,
+				foldGutter: true,
+				autoCloseBrackets : true
 			}
 		};
 		
@@ -40,16 +46,6 @@
 		    })[0];
 		}
 
-		$scope.checkAlgo = function(currentTab){
-			currentTab = currentTab || $scope.currentTab();
-			var content = currentTab.content;
-			var parser = require('easyCodeParser');
-			try {
-				return parser.parse(content);s		
-			} catch (exception) {
-				alert('Attention votre code source contient des erreurs ' + exception);
-			}
-		}
 
 		$scope.clearConsole = function(){
 			var terminalScope = angular.element(document.getElementById('terminal')).scope();
@@ -59,26 +55,38 @@
 		
 		$scope.runAlgo = function(){
 			var currentTab = $scope.currentTab();
-			
+			var content = currentTab.content;
+
 			$scope.$broadcast('terminal-output', {
-			    output: false,
+			    output: true,
 			    text: ['Execution de l\'algorithme : ' + currentTab.title],
 			    breakLine: true,
 			    className : 'info'
 			});
+				
+			var parser = require('easyCodeParser');
+			var algo = undefined;
+			try {
+				algo = parser.parse(content);
+			} catch (exception) {
+				$scope.$broadcast('terminal-output', {
+					output: true,
+					text: ['L\'algorithme comporte des erreurs!', exception + ' (ligne : ' + exception.line + ', colonne : '+exception.column+')'],
+					breakLine: true,
+					className : 'error'
+				});
+				return;
+			}
 
-
-			// must be a function it's call when a command is send
-			
 			var runner = require('easyCodeRunner');
-			runner.run($scope.checkAlgo(currentTab), {
+			runner.run(algo, {
 				abstractWrite : function(text, className) {
 					text = text + "";
 					$scope.$broadcast('terminal-output', {
-					    output: false,
-					    text: text.split('\n'),
-					    breakLine: true,
-					    className : className
+						output: true,
+						text: text.split('\n'),
+						breakLine: true,
+						className : className
 					});
 				},
 				write : function(text) {
@@ -110,7 +118,7 @@
 		});
 	}).config(['terminalConfigurationProvider', function (terminalConfigurationProvider) {
 
-	    terminalConfigurationProvider.config('vintage').outputDelay = 10;
+	    //terminalConfigurationProvider.config('vintage').outputDelay = 1000;
 	    terminalConfigurationProvider.config('vintage').allowTypingWriteDisplaying = false;
 	}]).service('promptCreator', [function () {
 	    var prompt = function (config) {

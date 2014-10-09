@@ -77,7 +77,7 @@
 		return {type : 'command', commandName : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
 	}
 	
-	function createVar(name, index, attribute) {
+	function createVar(name, indexs, attribute) {
 		if (Array.isArray(name)) {
 			name = name.join('');
 		}
@@ -86,7 +86,7 @@
 			type : 'var',
 			name : name.toUpperCase(),
 			offset : computeOffset(),
-			index : index,
+			indexs : indexs,
 			attribute : attribute
 		}
 	}
@@ -196,23 +196,23 @@
 start 
 	= block:block {return block}
 
-block
-	= [\n]* codeLines:codeLine* {return createBlock(codeLines)}
+block 
+	= eatSpace codeLines:codeLine* {return createBlock(codeLines)}
 	
 // list all possible expression
-codeLine = 
-	eatSpace code:(
-	 define
+codeLine 
+  = eatSpace code:(
+    emptyLine // cas de la ligne vide
+   / define
    / ifblock
    / whileblock
    / foreachblock
    / oneLineComment
    / multilineComment
-   / ecrire
    / lire
    / affectation
    / methodCall
-   / [\n] {return undefined} // cas de la ligne vide
+   / ecrire
    ) [\n\ \t]* {return code}
 	
 
@@ -237,7 +237,7 @@ comparaisonMembre
 	/ varName
 	/ nonBooleanExpression
 	
-booleanPrimary 
+booleanPrimary
 	= 'VRAI'i {return true}
 	/ 'FAUX'i {return false}
 	/ methodCall
@@ -277,7 +277,7 @@ primitive =
 	/ arrayDefinition
 	/ "(" eatSpace calc:notPrioritary eatSpace ")" {calc.priority = true; return calc}
 	
-arrayDefinition
+arrayDefinition 
 	= '[' eatSpace elements:arrayElements* eatSpace lastElement:arrayElement? eatSpace ']' {if (lastElement) {elements.push(lastElement)}; return {offset : computeOffset(), elements : elements, type : 'array'}}
 
 arrayElements 
@@ -293,17 +293,21 @@ arrayElement
 ************************************************************************************/
 	
 // define a variable
-define 
+define
 	= 'DEFINIR'i anySpace varname:varName anySpace type:types {checkVarName(varname.name); return computeOffset({type : 'command', commandName : 'define', varname : varname, vartype : type})}
 // write an expression
 ecrire 
-	= 'ECRIRE'i anySpace expression:expression {return computeOffset({type : 'command', commandName : 'write', params : [expression]})}
+	= 'ECRIRE'i anySpace expression:expression output:ecrireOutput?{return computeOffset({type : 'command', commandName : 'write', params : [expression], output : output})}
+
+ecrireOutput
+	= anySpace [\'\"] string:('erreur'i/'info'i) [\'\"] {return string == 'erreur' ? 'error' : 'info'}
+	
 // read a variable
-lire
+lire 
 	= 'LIRE'i anySpace varname:varName {return computeOffset({type : 'command', commandName : 'read', varname : varname})}
 
 affectation 
-	= varname:varName eatSpace '=' eatSpace expression:expression {return createAffectation(varname, expression)}
+	= varname:varName eatSpaceWithoutBackSpace '=' eatSpaceWithoutBackSpace expression:expression {return createAffectation(varname, expression)}
 	
 oneLineComment
 	= '//' [^\n]* {return undefined}
@@ -314,72 +318,78 @@ multilineComment
 /********************************************************************************
 ************** STRUCTURE CONDITIONNELLE *****************************************
 ********************************************************************************/
-ifblock
+ifblock 
 	= 'SI'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] blockYes:block blockElseIf:ifelseifblock*  blockNo:ifelseblock? 'FIN_SI'i  { return createCondition(expr, blockYes, blockNo, blockElseIf)}
-ifelseblock
+ifelseblock 
 	= 'SI_NON'i eatSpaceWithoutBackSpace [\n] block:block {return block}
-ifelseifblock
+ifelseifblock 
 	= 'SI_NON SI'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] block:block {return createCondition(expr, block)}
 	
 // while boucle
-whileblock 
+whileblock
 	= 'TANT_QUE'i anySpace expr:booleanExpression eatSpaceWithoutBackSpace [\n] block:block 'FIN_TANT_QUE'i {return {type : 'while', test : expr, block : block, offset : computeOffset()}}
 
-foreachblock 
+foreachblock
 	= 'POUR'i anySpace varname:varName anySpace 'DE'i anySpace start:(integer/car) anySpace 'A'i anySpace end:(integer/car) step:step? eatSpaceWithoutBackSpace [\n] block:block 'FIN_POUR'i {return {type : 'for', varname : varname, start : start, end : end, block : block, offset : computeOffset(), step : step}}
 	 /'POUR'i anySpace varname:varName anySpace 'DANS'i anySpace array:(varName/arrayDefinition) eatSpaceWithoutBackSpace [\n] block:block 'FIN_POUR'i {return {type : 'forEach', varname : varname, array : array, block : block}}
 
-step 
+step
 	= anySpace 'PAR' anySpace integer:integer {return integer}
 	
 /*************************************************************************
 ******* PREDICAT DE L'APPLICATION ****************************************
 *************************************************************************/
 // regex for varname
-varName "nom de variable (caractére accéptés a-z A-Z et _)"
-	= varname:[a-zA-Z\_]+ eatSpace '[' eatSpace index:(integer/string/car)? eatSpace ']' {return createVar(varname, index == undefined ? 'ADD_AT_END' : index )}
+varName
+	= varname:[a-zA-Z\_]+ eatSpace indexs:arrayAccessParameter+ {return createVar(varname, indexs)}
 	/ varname:[a-zA-Z\_]+ eatSpace attribute:attributAccess {return createVar(varname, undefined, {name : attribute.name})}
 	/ varname:[a-zA-Z\_]+ {return createVar(varname)}
 	
-nameOfParameter
+arrayAccessParameter
+	= '[' eatSpace index:(integer/string/car)? eatSpace ']' {return index == undefined ? 'ADD_AT_END' : index}
+	
+nameOfParameter 
 	= varname:[a-zA-Z\_]+ {return varname.join('')}
 	
-attributAccess = 
-	'.' varname:varName {return varname}
+attributAccess
+	= '.' varname:varName {return varname}
 
 methodCall 
 	= varname:varName '(' eatSpace params:functionParameters* eatSpace ')' otherAccess:haveOtherAccess? {return ChangeLastAttributeByMethod(varname, params, otherAccess)}
 
-haveOtherAccess
+haveOtherAccess 
 	= '.' call:methodCall {return call}
 	/ '.' varname:varName {return varname}
 	
-functionParameters 
+functionParameters
 	= parameter:expression eatSpace ',' eatSpace {return parameter}
 	/ expression
 	
-functionName "nom de fonction"
+functionName
 	= functionName:[a-zA-Z\_]+ {return functionName.join('')}
 	
 // all types possible in language
-types
+types 
 	= 'NOMBRE'i {return "number"}
 	/ 'CHAINE'i {return "string"}
 	/ 'TABLEAU'i {return "array"}
 	/ 'BOOLEEN'i {return "boolean"}
 	
-string "chaine de caractère"
-	= '"' string:('\\"' / [^\"] )* '"' {return string.join('')} 
-	/ "'" string:("\\'" / [^\'] )* "'" {return string.join('')} 
+string 
+	= '"' string:(specialStringDoubleQuote / [^\"] )* '"' {return string.join('')} 
+	/ "'" string:(specialStringSimpleQuote / [^\'] )* "'" {return string.join('')} 
 	/ methodCall
 	/ varName
 
-car "caractère exemple : 'a'"
+specialStringDoubleQuote = '\\"' {return '"';}
+specialStringSimpleQuote = "\\'" {return "'";}
+
+car 
 	= "'" car:. "'" {return car}
 	/ methodCall
 	/ varName
 	
-integer "nombre"
+integer
   = digits:[0-9]+ ('.'/',') decimal:[0-9]+ { return parseFloat(digits.join('') + '.' + decimal.join('')); }
   / digits:[0-9]+ { return parseInt(digits.join(''), 10); }
   / methodCall
@@ -390,11 +400,15 @@ integer "nombre"
  ************************************************************************/
 
 // spaceCaractere
-anySpace "espace"
+anySpace
 	= [\ \t]+ {return undefined}
 
-eatSpaceWithoutBackSpace
+eatSpaceWithoutBackSpace 
 	= [\ \t]* {return undefined} 
-eatSpace
+
+eatSpace 
 	= [\ \t\n]* {return undefined}
+
+emptyLine "ligne vide"
+	= [\n] {return undefined} 
 	

@@ -35,7 +35,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
       blockKeywords = parserConfig.blockKeywords || {},
       atoms = parserConfig.atoms || {},
       hooks = parserConfig.hooks || {},
-      multiLineStrings = parserConfig.multiLineStrings;
+      multiLineStrings = true;
   var isOperatorChar = /[+\-*&%=<>!?|\/]/;
   // create electricInput regex for end block keywork
   var electricInputRegexString = '';
@@ -177,37 +177,37 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
 	  
       if (stream.eatSpace()) return null;
 	  
-	  var style = (state.tokenize || tokenBase)(stream, state);
-     
-      ctx.align = ctx.align || true;
-	
-	  if (curPunc == "endstatement") {
-		popContext(state);
-	  }
-	  
-	  if (curPunc == "newstatement") {
-		pushContext(state, stream.column(), "statement", stream.current());
-	  }
+  	  var style = (state.tokenize || tokenBase)(stream, state);
+       
+        ctx.align = ctx.align || true;
+  	
+  	  if (curPunc == "endstatement") {
+  		popContext(state);
+  	  }
+  	  
+  	  if (curPunc == "newstatement") {
+  		pushContext(state, stream.column(), "statement", stream.current());
+  	  }
 	  
       return style;
     },
 
     indent: function(state, textAfter) {
-	  // if it's a end statement, this is reindented with -indentUnit
-	  if (blockKeywords[state.context.blockName] && blockKeywords[state.context.blockName].indexOf(textAfter.toUpperCase()) >= 0) {
-		state.context.indented -= indentUnit;
-		if (state.context.indented < 0) {
-			state.context.indented = 0;
-		}
-	  }
+  	  // if it's a end statement, this is reindented with -indentUnit
+  	  if (blockKeywords[state.context.blockName] && blockKeywords[state.context.blockName].indexOf(textAfter.toUpperCase()) >= 0) {
+  		state.context.indented -= indentUnit;
+  		if (state.context.indented < 0) {
+  			state.context.indented = 0;
+  		}
+  	  }
 	  
       return (state.context ? state.context.indented : 0);
     },
-	electricInput: electricInputRegex,
+	  electricInput: electricInputRegex,
     blockCommentStart: "/*",
     blockCommentEnd: "*/",
     lineComment: "//",
-    fold: "brace"
+    fold: "easyCode"
   };
 });
 
@@ -299,8 +299,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     name: "easyCode",
     keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A DANS PAR FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
     blockKeywords: vblocKeyWord,
-    atoms: words("VIDE NOMBRE CHAINE BOOLEEN TABLEAU"),
-    modeProps: {fold: ["brace", "include"]}
+    atoms: words("NOMBRE CHAINE BOOLEEN TABLEAU VRAI FAUX VIDE")
   });
   
 });

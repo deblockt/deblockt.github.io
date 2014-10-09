@@ -8,6 +8,10 @@ require.config({
 		angularRoute : 'angular-route/angular-route.min',
 		easyCodeParser : '../javascripts/easyCodeLanguage/easyCodeParser',
 		easyCodeRunner : '../javascripts/easyCodeLanguage/easyCodeRunner',
+		easyCodeLint : '../javascripts/easyCodeLanguage/easyCodeLint',
+		easyCodeFold : '../javascripts/easyCodeLanguage/easyCodeFold',
+		easyCodeCloseTag : '../javascripts/easyCodeLanguage/easyCodeCloseTag',
+		easyCodeValidator : '../javascripts/easyCodeLanguage/easyCodeValidator',
 		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal'
 	},
 	shim : {
@@ -41,12 +45,18 @@ require.config({
 				'angular',
 				'angularRoute',
 				'angularBootstrap',
-				'angular-ui-codemirror/ui-codemirror',
 				'codemirror/mode/htmlmixed/htmlmixed',
 				'codemirror/addon/hint/show-hint',
+				'codemirror/addon/lint/lint',
+				'codemirror/addon/fold/foldgutter',
                 '../javascripts/easyCodeLanguage/easyCodeSyntaxHighlighter',
 				'easyCodeParser',
-				'terminalEmulator'
+				'easyCodeLint',
+				'easyCodeFold',
+				'easyCodeValidator',
+				'terminalEmulator',
+				'angular-ui-codemirror/ui-codemirror',
+				'easyCodeCloseTag'
 			],
 			exports: 'app'
 		}

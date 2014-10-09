@@ -382,7 +382,7 @@ angular.module('vtortola.ng-terminal', [])
                         }
 
                         scope.$watchCollection(function () { return scope.results; }, function (newValues, oldValues) {
-                
+							
                             if (oldValues.length && !newValues.length) { // removal detected
                                 var children = results.children();
                                 for (var i = 0; i < children.length; i++) {
@@ -441,7 +441,7 @@ angular.module('vtortola.ng-terminal', [])
                                     for (var i = 0; i < newValue.text.length; i++) {
                                         var line = document.createElement('pre');
                                         line.textContent = newValue.output?'  ':'';
-                                        line.className = + 'terminal-line' + (newValue.className ? ' ' + newValue.className : '');
+                                        line.className = 'terminal-line' + (newValue.className ? ' ' + newValue.className : '');
                                         line.textContent += newValue.text[i];
                                         results[0].appendChild(line)
                                     }

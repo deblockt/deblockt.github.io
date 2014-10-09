@@ -118,18 +118,37 @@
 			getType : function(varName) {
 				return this.getVar(varName).type;
 			},
-			setValue : function(varName, value, index) {
+			setValue : function(varName, value, indexs) {
 				// TODO add type check
-				if (index != undefined) {
+				if (indexs != undefined) {					
 					if (this.getType(varName) == 'array') {
-						if (this.getVar(varName).value == undefined) {
-							this.getVar(varName).value = [];
+						var varValue = this.getVar(varName);
+						
+						if (varValue.value == undefined) {
+							varValue.value = [];
 						}
-						if (index == 'ADD_AT_END') {
-							this.getVar(varName).value.push(value);
+						var currentArray = varValue.value;
+						// on traite la création de tous les indices
+						var max = indexs.length;
+						if (max > 1) {
+							for (var i = 0; i < max - 1; i++) {
+								var index = indexs[i];							
+								if (currentArray[index] == undefined || index == 'ADD_AT_END') {
+									if (index == 'ADD_AT_END') {
+										index = currentArray.length;
+									}
+									currentArray[index] = [];
+								}										
+								currentArray = currentArray[index];
+							}
+						}
+						// on est arrivé à la fin de l'acces aux indexs
+						var lastIndex = indexs[indexs.length - 1];
+						if (lastIndex == 'ADD_AT_END') {
+							currentArray.push(value);
 						} else {
-							this.getVar(varName).value[index] = value;
-						}
+							currentArray[lastIndex] = value;
+						}						
 					} else {
 						throw new RuntimeException('La variable ' + varName + ' n\'est pas un tableau.');
 					}
@@ -252,7 +271,8 @@
  		var typeTranslation = {
  			"number" : "Nombre",
  			"boolean" : "Booleen",
- 			"string" : "Chaine"
+ 			"string" : "Chaine",
+			"array" : "Tableau"
  		};
 
  		var RuntimeException = function(message, offset) {
@@ -343,12 +363,16 @@
  				context.isset(expression.name, true, expression.offset);
  				
 				var variable = context.getValue(expression.name);
-				if (expression.index != undefined) {
-					if (expression.index == 'ADD_AT_END') {
-						throw new RuntimeException('Vous devez préciser l\'indice de l\'element à accéder.', expression.offset);
+				if (expression.indexs != undefined) {
+					for (var i in expression.indexs) {
+						index = expression.indexs[i];
+						if (index == 'ADD_AT_END') {
+							throw new RuntimeException('Vous devez préciser l\'indice de l\'element à accéder.', expression.offset);
+						}
+						var index = evaluateExpression(index, context);
+						checkType(variable, 'array', expression.offset);
+						variable = variable[index];
 					}
-					var index = evaluateExpression(expression.index, context);
-					variable = variable[index];
 				}
 				if (variable == undefined) {
 					output.info('La variable ' + expression.name + (index != undefined ? '['+index+']': '') + ' n\'est pas initialisée')
@@ -375,6 +399,7 @@
 				return undefined;
  			}
 			
+			// array [1;2;3]
 			if (expression.type == 'array') {
 				var ret = [];
 				for (var i in expression.elements) {
@@ -395,7 +420,15 @@
 		 */
 		var toString = function(value) {
 			if (Array.isArray(value)) {
-				return "[" + value.join(', ') + "]";
+				var ret = '[';
+				for (var i in value) {
+					ret += ' ';
+					if (isNaN(i)) {
+						ret += i + ' : '
+					}
+					ret += toString(value[i]) + ',';
+				}
+				return ret.substring(0, ret.length - 1) + ' ]';
 			}	
 			return value;
 		}
@@ -406,17 +439,24 @@
  		 */
  		var runCommand = function(line, context, endFunction) {
  			if (line.commandName == 'write') {
-				output.write(toString(evaluateExpression(line.params[0], context)));
+				var string = toString(evaluateExpression(line.params[0], context));
+				if (line.output && line.output == 'error') {
+					output.error(string);
+				} else if (line.output && line.output == 'info') {
+					output.info(string);
+				} else {
+					output.write(string);
+				}
 			} else if (line.commandName == 'define') {
 				context.defineVar(line.varname.name, line.vartype);
 			} else if (line.commandName == 'affectation') { 
 				context.isset(line.varname.name, true, line.offset);
 				var value = evaluateExpression(line.expression, context);
-				if (line.varname.index == undefined) {
+				if (line.varname.indexs == undefined) {
 					checkType(value, context.getType(line.varname.name), line.expression.offset || line.offset);
 				}
 				// TODO gérer les variables des objets	
-				context.setValue(line.varname.name, value, line.varname.index);
+				context.setValue(line.varname.name, value, line.varname.indexs);
 			} else if (line.commandName == 'read') {
 				var type = context.getType(line.varname.name);
 				if (type == 'array') {
