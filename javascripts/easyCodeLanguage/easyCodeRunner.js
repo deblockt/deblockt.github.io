@@ -32,7 +32,8 @@
 					size++;
 				}
 				return size;
-			}
+			},
+			'arondi_inferieur' : Math.floor
 		}
 		
 		var SKIP_FUNCTION = ['eval'];
