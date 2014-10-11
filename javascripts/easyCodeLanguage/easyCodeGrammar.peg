@@ -1,4 +1,4 @@
-// TODO gérer la detection des variables non initialisée
+// TODO gÃ©rer la detection des variables non initialisÃ©e
 {
 	/**
 	 * emlation of indexOf for old navigator
@@ -71,7 +71,7 @@
 	}
 	
 	/**
-	 * créé une action d'affectation
+	 * crÃ©Ã© une action d'affectation
 	 */
 	function createAffectation(varname, expression) {
 		return {type : 'command', commandName : 'affectation', varname : varname, expression : expression, offset : computeOffset()};
@@ -94,7 +94,7 @@
 	var languageKeyWord = ['VRAI', 'FAUX', 'NULL', 'PARENT']
 	function checkVarName(varname) {
 		if (Array.indexOf(languageKeyWord, varname) >= 0) {
-			throw new SyntaxError(varname + ' et un nom reservé.');
+			throw new SyntaxError(varname + ' et un nom reservÃ©.');
 		}
 	}
 	
@@ -119,15 +119,15 @@
 				&& operationPriority[right.operation] == operationPriority[operation]
 				&& right.type == type
 			) {
-			// récupération de l'element le plus à droites
-			// il faut en fait ajouter l'operation à la gauche de l'operation de droit
-			// mostLeft représente le dernier objet qui a un element à gauche
+			// rÃ©cupÃ©ration de l'element le plus Ã  droites
+			// il faut en fait ajouter l'operation Ã  la gauche de l'operation de droit
+			// mostLeft reprÃ©sente le dernier objet qui a un element Ã  gauche
 			var mostLeft = right;
 			while (mostLeft.left.left && !mostLeft.left.priority && mostLeft.left.type == mostLeft.type) {
 				mostLeft = mostLeft.left;
 			}
 			
-			// on va recréer l'operation courrante dans la partie la plus à gauche
+			// on va recrÃ©er l'operation courrante dans la partie la plus Ã  gauche
 			mostLeft.left = CreateArithmetique(operation, left , mostLeft.left);
 			return right;
 		}
@@ -226,7 +226,7 @@ booleanExpression
 	= notPrioritaryBoolean
 
 
-/* TODO gérer le problème de l'expression test * 5 qui passe dans le booleanExpression */
+/* TODO gÃ©rer le problÃ¨me de l'expression test * 5 qui passe dans le booleanExpression */
 expression 
 	= booleanExpression
 	/ nonBooleanExpression
@@ -242,6 +242,7 @@ booleanPrimary
 	/ 'FAUX'i {return false}
 	/ methodCall
 	/ varName
+	/ "(" eatSpace ")"
 	/ "(" eatSpace booleanExpression:booleanExpression  eatSpace ")"	{booleanExpression.priority = true; return booleanExpression}
 	/ "!" eatSpace expr:comparaison {return {type : 'reversBoolean', bool : expr}}
 	
@@ -275,6 +276,7 @@ primitive =
 	/ methodCall
 	/ varName 
 	/ arrayDefinition
+	/ "(" eatSpace ")"
 	/ "(" eatSpace calc:notPrioritary eatSpace ")" {calc.priority = true; return calc}
 	
 arrayDefinition 
