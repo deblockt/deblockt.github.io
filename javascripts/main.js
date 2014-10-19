@@ -12,6 +12,7 @@ require.config({
 		easyCodeFold : '../javascripts/easyCodeLanguage/easyCodeFold',
 		easyCodeCloseTag : '../javascripts/easyCodeLanguage/easyCodeCloseTag',
 		easyCodeValidator : '../javascripts/easyCodeLanguage/easyCodeValidator',
+		easyCodeConfiguration : '../javascripts/easyCodeLanguage/easyCodeConfiguration',
 		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal'
 	},
 	shim : {
