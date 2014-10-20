@@ -1,7 +1,5 @@
 ﻿define(function (require) {
-	
 	var app = angular.module('easyCodeApp', ['ngRoute', 'ui.bootstrap', 'ui.codemirror', 'vtortola.ng-terminal']);
-	
 
 	// controller for header actions
 	app.controller('headerController', function($scope){
@@ -11,89 +9,140 @@
 		};
 	});
 
+	// controller for text editor
+	app.controller('easyCodeController', function($scope){
+		
+		// add header properties for phone support
+		
+		
+		$scope.editor = {
+			options : {
+				lineNumbers: true,
+				tabSize : 2,							
+				mode : 'text/easyCode-src',
+				gutters: ['CodeMirror-lint-markers', 'CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+				extraKeys: {"Ctrl-Space": "autocomplete"},
+				lint : {async : true} ,
+				foldGutter: true,
+				autoCloseBrackets : true
+			}
+		};
+		
+		$scope.tabs = [
+			{title : 'Algo 1', content : 'SI test > 0', active : true}
+		];
 
-	/**
-	 * lazy loading configuration
-	 */
-    var config = require('routes');
-	var dependencyResolverFor = require('appDir/services/dependencyResolverFor');
+		$scope.nbTabs = 1;
+		
+		$scope.addTab = function(){
+			$scope.tabs.push({
+				title : 'Algo ' + ($scope.tabs.length + 1), content : '// alog n°'+ ($scope.tabs.length + 1) , active : true
+			});
+		};
+		
+		$scope.currentTab = function(){
+		    return $scope.tabs.filter(function(tab){
+		      return tab.active;
+		    })[0];
+		}
 
-	/**
-	 * lazy routing configuration
-	 */
-    app.config(
-    [
-        '$routeProvider',
-        '$locationProvider',
-        '$controllerProvider',
-        '$compileProvider',
-        '$filterProvider',
-        '$provide',
-        function($routeProvider, $locationProvider, $controllerProvider, $compileProvider, $filterProvider, $provide, terminalConfigurationProvider)
-        {
-        	app.controller = function(name, constructor) {
-        		$controllerProvider.register(name, constructor);
-        		return this;
-        	}
-	        app.directive  = function(name, constructor) {
-	        	$compileProvider.directive(name, constructor);
-	        	return this;
-	        }
-	        app.filter     = function(name, constructor) {
-	        	$filterProvider.register(name, constructor);
-	        	return this;
-	        }
-	        app.factory    = function(name, constructor) {
-	        	$provide.factory(name, constructor);
-	        	return this;
-	        }
-	        app.service    = function (name, constructor) {
-	        	$provide.service(name, constructor);
-	        	return this;
-	        }
 
-            // $locationProvider.html5Mode(true);
+		$scope.clearConsole = function(){
+			var terminalScope = angular.element(document.getElementById('terminal')).scope();
+			terminalScope.clear();
+		}
 
-            if(config.routes !== undefined)
-            {
-                angular.forEach(config.routes, function(route, path)
-                {
-                	// default template has the same name as the controller
-                	route.templateUrl = route.templateUrl || route.controller+'.html';
-                    $routeProvider.when(
-                    	path, 
-                    	{
-                    		templateUrl:route.templateUrl,
-                    		resolve:dependencyResolverFor(route.dependencies),
-                    		controller : route.controller
-                    	}
-                	);
-                });
-            }
+		
+		$scope.runAlgo = function(){
+			var currentTab = $scope.currentTab();
+			var content = currentTab.content;
 
-            if(config.defaultRoutePaths !== undefined)
-            {
-                $routeProvider.otherwise({redirectTo:config.defaultRoutePaths});
-            }
+			$scope.$broadcast('terminal-output', {
+			    output: true,
+			    text: ['Execution de l\'algorithme : ' + currentTab.title],
+			    breakLine: true,
+			    className : 'info'
+			});
+				
+			var parser = require('easyCodeParser');
+			var algo = undefined;
+			try {
+				algo = parser.parse(content);
+			} catch (exception) {
+				$scope.$broadcast('terminal-output', {
+					output: true,
+					text: ['L\'algorithme comporte des erreurs!', exception + ' (ligne : ' + exception.line + ', colonne : '+exception.column+')'],
+					breakLine: true,
+					className : 'error'
+				});
+				return;
+			}
 
-        }
-    ]);
+			var runner = require('easyCodeRunner');
+			runner.run(algo, {
+				abstractWrite : function(text, className) {
+					text = text + "";
+					$scope.$broadcast('terminal-output', {
+						output: true,
+						text: text.split('\n'),
+						breakLine: true,
+						className : className
+					});
+				},
+				write : function(text) {
+					this.abstractWrite(text, 'output');
+				},
+				error : function(text) {
+					this.abstractWrite(text, 'error');
+				},
+				info : function(text) {
+					this.abstractWrite(text, 'info');
+				}
+			}, {
+				read : function (validator, action) {
+					$scope.onCommandInput = function(command) {
+						if (!validator || validator(command)) {
+							action(command);
+						}						
+					}
+				}
+			});
+		}
+
+		$scope.onCommandInput = undefined;
+		$scope.$on('terminal-input', function (e, consoleInput) {
+		    var cmd = consoleInput[0];
+		    if ($scope.onCommandInput) {
+		    	$scope.onCommandInput(cmd.command);
+		    }
+		});
+	}).config(['terminalConfigurationProvider', function (terminalConfigurationProvider) {
+
+	    //terminalConfigurationProvider.config('vintage').outputDelay = 1000;
+	    terminalConfigurationProvider.config('vintage').allowTypingWriteDisplaying = false;
+	}]).service('promptCreator', [function () {
+	    var prompt = function (config) {
+	        return {text : ''};
+	    };
+	    return prompt;
+	}]);
+	
+	
+	app.config(['$routeProvider', function ($routeProvider) {
+          //$httpProvider.responseInterceptors.push('httpInterceptor');
+
+          $routeProvider
+              .when('/', { templateUrl: 'codeEditor.html', controller: 'easyCodeController' })
+              .otherwise({ redirectTo: '/' });
+
+          //$locationProvider.html5Mode(true);
+      }
+	]);
   
-  	/**
-  	 * configuration for terminal emlator
-  	 */
-    app.config([
-        'terminalConfigurationProvider',
-         function(terminalConfigurationProvider){
-            terminalConfigurationProvider.config('vintage').outputDelay = 10;
-            terminalConfigurationProvider.config('vintage').allowTypingWriteDisplaying = false;
-         }
-    ]);
-
+  
 	app.init = function(){
 		// lancement de l'application
 		angular.bootstrap(document, ['easyCodeApp']);
 	}
-
 	return app;
 });

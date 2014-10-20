@@ -391,8 +391,12 @@ angular.module('vtortola.ng-terminal', [])
                             }
 
                             scope.showPrompt = false;
-                            var f = [];
-                            var nbLineToWrite = 0;
+                            var f = [function () {
+                                scope.showPrompt = true;
+                                scope.$$phase || scope.$apply();
+                                consoleView[0].scrollTop = consoleView[0].scrollHeight;
+                            }];
+
                             for (var j = 0; j < newValues.length; j++) {
 
                                 var newValue = newValues[j];
@@ -403,24 +407,22 @@ angular.module('vtortola.ng-terminal', [])
 
                                 if (scope.outputDelay) {
 
-                                    for (var i = 0; i < newValue.text.length; ++i) {
+                                    for (var i = newValue.text.length - 1; i >= 0; i--) {
                                         var line = document.createElement('pre');
                                         line.className = 'terminal-line' + (newValue.className ? ' ' + newValue.className : '');
 
                                         var textLine = newValue.text[i];
 
                                         if (scope.outputDelay && newValue.output) {
-                                            line.textContent = newValue.indentLine ? '  ' : '';
-                                            
+                                            line.textContent = '  ';
+                                            var fi = f.length - 1;
                                             var wrapper = function () {
-												var fi = ++nbLineToWrite;
                                                 var wline = line;
                                                 var wtextLine = textLine;
-                                                
+                                                var wf = f[fi];
                                                 var wbreak = i == newValue.text.length - 1 && newValue.breakLine;
                                                 f.push(function () {
-													var wf = f[fi];
-													results[0].appendChild(wline); type(wline, wtextLine, 0, wf);
+                                                    results[0].appendChild(wline); type(wline, wtextLine, 0, wf);
                                                     consoleView[0].scrollTop = consoleView[0].scrollHeight;
                                                     if (wbreak) {
                                                         var breakLine = document.createElement('br');
@@ -438,7 +440,7 @@ angular.module('vtortola.ng-terminal', [])
                                 else {
                                     for (var i = 0; i < newValue.text.length; i++) {
                                         var line = document.createElement('pre');
-                                        line.textContent = newValue.output && newValue.indentLine ?'  ':'';
+                                        line.textContent = newValue.output?'  ':'';
                                         line.className = 'terminal-line' + (newValue.className ? ' ' + newValue.className : '');
                                         line.textContent += newValue.text[i];
                                         results[0].appendChild(line)
@@ -450,14 +452,7 @@ angular.module('vtortola.ng-terminal', [])
                                 }
                     
                             }
-                            
-							f.push(function () {
-                                scope.showPrompt = true;
-                                scope.$$phase || scope.$apply();
-                                consoleView[0].scrollTop = consoleView[0].scrollHeight;
-                            });
-
-                            f[0]();
+                            f[f.length - 1]();
                         });
 
                 }
