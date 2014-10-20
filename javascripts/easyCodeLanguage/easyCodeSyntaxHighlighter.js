@@ -20,10 +20,10 @@ if (!Array.indexOf)
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror/lib/codemirror"));
   else if (typeof define == "function" && define.amd) // AMD
-    define(["codemirror/lib/codemirror"], mod);
+    define(["codemirror/lib/codemirror", "easyCodeConfiguration"], mod);
   else // Plain browser env
     mod(CodeMirror);
-})(function(CodeMirror) {
+})(function(CodeMirror, easyCodeConfiguration) {
 "use strict";
 
 CodeMirror.defineMode("easyCode", function(config, parserConfig) {
@@ -186,15 +186,16 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
   	  }
   	  
   	  if (curPunc == "newstatement") {
-  		pushContext(state, stream.column(), "statement", stream.current());
+  		pushContext(state, stream.column(), "statement", stream.current().toUpperCase());
   	  }
 	  
       return style;
     },
 
     indent: function(state, textAfter) {
+	  var blockName = state.context.blockName ? state.context.blockName.toUpperCase() : '';
   	  // if it's a end statement, this is reindented with -indentUnit
-  	  if (blockKeywords[state.context.blockName] && blockKeywords[state.context.blockName].indexOf(textAfter.toUpperCase()) >= 0) {
+  	  if (blockKeywords[blockName] && blockKeywords[blockName].indexOf(textAfter.toUpperCase()) >= 0) {
   		state.context.indented -= indentUnit;
   		if (state.context.indented < 0) {
   			state.context.indented = 0;
@@ -235,34 +236,38 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
 		var token = editor.getTokenAt(editor.getCursor());
 		
 		var list = [];
-		
+		var wordList = [];
 		function addToList(value) {
+			var tokenString = token.string.trim().toUpperCase();
+			
 			// test if value correspond current entry
-			if (token.string.trim().length > 0 && value.indexOf(token.string) == -1) {
+			if (tokenString.length > 0 && value.indexOf(tokenString) == -1) {
 				return;
 			}
 			
-			list.push(
-				{
-					text : value,
-					hint : function(cm, data, completion){
-						var easyCode = cm.getMode({},"easyCode");
-						
-						var before = cm.getRange(Pos(cur.line, 0), Pos(cur.line, token.start));
-						// if the word is the first of the line
-						if (before.trim().length == 0) {
-							token.start = easyCode.indent(token.state, completion.text);
-						} else if (token.string.trim() == 0) {
-							// if it's after an other word but no car are entred
-							token.start += 1;
+			if (Array.indexOf(list, value) == -1) {
+				wordList.push(value);
+				list.push(
+					{
+						text : value,
+						hint : function(cm, data, completion){
+							var easyCode = cm.getMode({},"easyCode");
+							
+							var before = cm.getRange(Pos(cur.line, 0), Pos(cur.line, token.start));
+							// if the word is the first of the line
+							if (before.trim().length == 0) {
+								token.start = easyCode.indent(token.state, completion.text);
+							} else if (token.string.trim() == 0) {
+								// if it's after an other word but no car are entred
+								token.start += 1;
+							}
+													
+							cm.replaceRange(completion.text, Pos(cur.line, token.start),  Pos(cur.line, token.end), "complete")
 						}
-												
-						cm.replaceRange(completion.text, Pos(cur.line, token.start),  Pos(cur.line, token.end), "complete")
 					}
-				}
-			);
+				);
+			}
 		}
-		
 		
 		// add end bloc keyword
 		if (vblocKeyWord[token.state.context.blockName]) {
@@ -272,9 +277,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
 		}
 		
 		for (var i in words) {
-			if (list.indexOf(words[i]) == -1) {
-				addToList(words[i]);
-			}
+			addToList(words[i]);
 		}
 	 
 		return {
@@ -289,15 +292,11 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
       CodeMirror.defineMIME(mimes[i], mode);
   }
 
-  var vblocKeyWord = {
-	'SI'  : ['SI_NON', 'FIN_SI'],
-	'TANT_QUE' : ['FIN_TANT_QUE'],
-	'POUR' : ['FIN_POUR'],
-	'SI_NON' : ['FIN_SI']
-  };
+  var vblocKeyWord = easyCodeConfiguration.getStartToEndBlock();
+  
   def(["text/easyCode-src"], {
     name: "easyCode",
-    keywords: words("LIRE ECRIRE SI SI_NON FIN_SI POUR DE A DANS PAR FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR"),
+    keywords: words("LIRE ECRIRE SI SI_NON SI_NON_SI FIN_SI POUR DE A DANS PAR FIN_POUR TANT_QUE FIN_TANT_QUE DEFINIR ET OU"),
     blockKeywords: vblocKeyWord,
     atoms: words("NOMBRE CHAINE BOOLEEN TABLEAU VRAI FAUX VIDE")
   });
