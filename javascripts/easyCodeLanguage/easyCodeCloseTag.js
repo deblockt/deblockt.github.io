@@ -5,16 +5,12 @@
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror/lib/codemirror"));
   else if (typeof define == "function" && define.amd) // AMD
-    define(["codemirror/lib/codemirror"], mod);
+    define(["codemirror/lib/codemirror", "easyCodeConfiguration"], mod);
   else // Plain browser env
     mod(CodeMirror);
-})(function(CodeMirror) {
+})(function(CodeMirror, easyCodeConfiguration) {
   var DEFAULT_BRACKETS = "()[]''\"\"";
-  var EASY_CODE = {
-    'SI' : 'FIN_SI',
-    'POUR' : 'FIN_POUR',
-    'TANT_QUE' : 'FIN_TANT_QUE'
-  };
+  var EASY_CODE = easyCodeConfiguration.getAutoCloseTag();
 
   var SPACE_CHAR_REGEX = /\s/;
 
@@ -158,7 +154,7 @@
           for (var i = 0; i < nbIndent; i++) {
             appendString += '\t'
           }
-          cm.replaceSelection(key + ' \n' + appendString + codes[startTag]);
+          cm.replaceSelection(key.trim() + ' \n' + appendString + codes[startTag]);
           cm.setCursor({line: range.head.line , ch : range.head.ch + 2 });            
           
         }
@@ -168,7 +164,9 @@
       // use function get passe correct key an i as parameter
       var key = i.substring(i.length - 1);
       addKeyMap(key.toLowerCase(), i);
-      addKeyMap(key.toUpperCase(), i);
+	  if (key.toUpperCase() != key.toLowerCase()) { 
+		addKeyMap(key.toUpperCase(), i);
+	  }
     }
   }
 });

@@ -2,13 +2,12 @@
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("codemirror/lib/codemirror"));
   else if (typeof define == "function" && define.amd) // AMD
-    define(["codemirror/lib/codemirror"], mod);
+    define(["codemirror/lib/codemirror", 'easyCodeValidator'], mod);
   else // Plain browser env
     mod(CodeMirror);
-})(function(CodeMirror) {
+})(function(CodeMirror, validator) {
 	"use strict";
 	
-
 	var parsing = false;
 	var vneedToReparse = undefined;
 	var onEndParsing = undefined;
@@ -33,7 +32,6 @@
 		}
 	};
 
-	var validator = require('easyCodeValidator');
 	var checkText = function(cm, updateLinting) {
 		var found = validator.validate(cm.getValue());
 
@@ -46,7 +44,10 @@
 				founded.to = cm.posFromIndex(founded.to);
 			}
 		}
+		
 		updateLinting(cm, found);
+
+
 		endParsing(found.length > 0);
 	}
 

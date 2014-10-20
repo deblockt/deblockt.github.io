@@ -2,6 +2,12 @@ require.config({
 	baseUrl : '../bower_components',
     urlArgs: "bust=" + (new Date()).getTime(),
 	paths : {
+		// configuration base dir
+		services : '../javascripts/services',
+		controllers : '../javascripts/controllers',
+		directives : '../javascripts/directives',
+		
+		// module shortcut
 		app : '../javascripts/app',
 		angular : 'angular/angular.min',
 		angularBootstrap : 'angular-bootstrap/ui-bootstrap-tpls.min',
@@ -12,7 +18,12 @@ require.config({
 		easyCodeFold : '../javascripts/easyCodeLanguage/easyCodeFold',
 		easyCodeCloseTag : '../javascripts/easyCodeLanguage/easyCodeCloseTag',
 		easyCodeValidator : '../javascripts/easyCodeLanguage/easyCodeValidator',
-		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal'
+		easyCodeConfiguration : '../javascripts/easyCodeLanguage/easyCodeConfiguration',
+		easyCodeSyntaxHighlighter : '../javascripts/easyCodeLanguage/easyCodeSyntaxHighlighter',
+		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal',
+		routes : '../javascripts/routes',
+		appDir : '../javascripts/',
+		ffFileSystem : 'idb.filesystem.js/src/idb.filesystem.min'
 	},
 	shim : {
 		'angularBootstrap' : {
@@ -40,23 +51,32 @@ require.config({
 			],
 			exports : 'terminalEmulator'
 		},
-		app : {
-			deps: [
-				'angular',
-				'angularRoute',
-				'angularBootstrap',
+		'controllers/easyCodeEditor' : {
+			deps : [
 				'codemirror/mode/htmlmixed/htmlmixed',
 				'codemirror/addon/hint/show-hint',
 				'codemirror/addon/lint/lint',
 				'codemirror/addon/fold/foldgutter',
-                '../javascripts/easyCodeLanguage/easyCodeSyntaxHighlighter',
-				'easyCodeParser',
+                'easyCodeSyntaxHighlighter',
+                'easyCodeParser',
 				'easyCodeLint',
 				'easyCodeFold',
 				'easyCodeValidator',
+				'easyCodeCloseTag',
+				'easyCodeRunner',				
+				'services/fileSystem'
+			],
+			exports : 'controllers/easyCodeEditor'
+		},
+		app : {
+			deps: [
+				'angular',
+				'angularRoute',
+				'appDir/services/dependencyResolverFor',
+				'routes',
+				'angularBootstrap',
 				'terminalEmulator',
-				'angular-ui-codemirror/ui-codemirror',
-				'easyCodeCloseTag'
+				'angular-ui-codemirror/ui-codemirror'
 			],
 			exports: 'app'
 		}
