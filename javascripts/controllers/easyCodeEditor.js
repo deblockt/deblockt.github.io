@@ -1,4 +1,4 @@
-define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, fs)
+define(['app', 'easyCodeParser', 'services/fileSystem', 'controllers/popUp', 'controllers/editorInstructionPopUp'], function(app, Parser, fs)
 {
 	// default editor configuration
 	var EDITOR_OPTIONS = {
@@ -9,7 +9,8 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 		extraKeys: {"Ctrl-Space": "autocomplete"},
 		lint : {async : true} ,
 		foldGutter: true,
-		autoCloseBrackets : true
+		autoCloseBrackets : true,
+		dragDrop : false
 	};
 		
 	// object used for write on the console
@@ -77,8 +78,12 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 		}
 	};
 	
-	
-    app.controller('easyCodeEditor', function($scope){
+	// convert a string to a filename
+	var toFileName = function(string) {
+		return string.replace(/[^a-z0-9\(\)\-]/gi, '_').toLowerCase();
+	}
+		
+    app.controller('easyCodeEditor', function($scope, popUpManager, $modal){
 			
 		terminalWritter.init($scope);
 		terminalReader.init($scope);
@@ -137,12 +142,18 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 			return tab;
         };
         
-        $scope.removeTab = function(index) {
+        $scope.removeTab = function(index) {			
 			var tab = $scope.tabs[index];
-            $scope.tabs.splice(index, 1);
-			if ($scope.fsSupported && tab.filePath) {
-				fs.removeFile(tab.filePath);
-			}
+			popUpManager.confirm(
+				'Suppression de l\'onglet : ' + tab.title,
+				'Voulez vous vraiment supprimer l\'onglet ' + tab.title + ' ?',
+				function() {
+					$scope.tabs.splice(index, 1);
+					if ($scope.fsSupported && tab.filePath) {
+						fs.removeFile(tab.filePath);
+					}
+				}
+			);
         };
         
         $scope.currentTab = function(){
@@ -196,16 +207,49 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
         };
  
 
+		/**
+		 * function call before download link
+		 */
+		$scope.downloadAlgo = function(){
+			var currentTab = $scope.currentTab();
+			
+			var content = currentTab.content;
+			var blob = new Blob([ content ], { type : 'text/plain' });
+			$scope.downloadAlgoUrl = (window.URL || window.webkitURL).createObjectURL( blob );
+			$scope.downloadAlgoFileName = toFileName(currentTab.title);
+		};
 
-
-
-
+		/**
+		 * convert a file upload on a tab
+		 */
+		$scope.fileAdded = function($file, $event, $flow) {
+			var ext = $file.name.substring($file.name.lastIndexOf('.') + 1);
+			var allowExt = 'easyCode';
+			if (ext != allowExt) {
+				popUpManager.warning(
+					'Erreur lors de l\'ajout de l\'algorithme',
+					'L\'extension du fichier doit être .'+allowExt
+				);
+				return;
+			}
+			var fileReader = new FileReader();
+			fileReader.readAsText($file.file);
+			fileReader.onload = function (event) {
+			   var tab = $scope.addTab();
+			   tab.content = event.target.result;
+			   tab.title = $file.name.substring(0, $file.name.lastIndexOf('.'));
+			   tab.renameMode = false;
+			   $flow.removeFile($file);
+			   $scope.$apply();			   
+			};
+		}
  
 		var errorFsHandler = function() {
 			var tab = $scope.addTab();
 			tab.renameMode = false;
 			$scope.$apply();
 		}
+		
 		
 		/**
 		 * read algos finds on file system
@@ -256,7 +300,7 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 		 */
 		$scope.saveAlgo = function(tab) {
 			var currentTab = tab || $scope.currentTab();
-			var filePath = currentTab.filePath || 'algos/'+currentTab.title;
+			var filePath = currentTab.filePath || 'algos/'+toFileName(currentTab.title);
 			var writeFile = function() {
 				var toStringify = {title : currentTab.title, content : currentTab.content};
 				currentTab.filePath = filePath;
@@ -269,11 +313,23 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 				filePath, 
 				writeFile, 
 				function(e){
+					// the file already exists
 					if (e.name = 'InvalidModificationError') {
 						writeFile();
 					}
 				}
 			);			
+		};
+			
+		$scope.openInstructionPopUp = function(){			
+			$modal.open({
+			  templateUrl: 'editorInstructionPopUp.html',
+			  controller: 'editorInstructionPopUp',
+			  size: 'lg',
+			  resolve : {
+			  	codeMirror : function(){return $scope.currentTab().cm}
+			  }
+			});
 		};
 		
 		//init file system	
@@ -293,6 +349,7 @@ define(['app', 'easyCodeParser', 'services/fileSystem'], function(app, Parser, f
 				errorFsHandler
 			);
 		}
+		
 		
     })
     .service('promptCreator', [function () {

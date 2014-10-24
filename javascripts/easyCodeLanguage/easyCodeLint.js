@@ -32,8 +32,8 @@
 		}
 	};
 
-	var checkText = function(cm, updateLinting) {
-		var found = validator.validate(cm.getValue());
+	var checkText = function(cm, updateLinting, value) {
+		var found = validator.validate(value);
 
 		for (var i in found) {
 			var founded = found[i];
@@ -51,9 +51,9 @@
 		endParsing(found.length > 0);
 	}
 
-	CodeMirror.registerHelper("lint", "easyCode", function(cm, updateLinting, options) {
+	CodeMirror.registerHelper("lint", "easyCode", function(value, updateLinting, options, cm) {
 		
-		setTimeout(function(){checkText(cm, updateLinting)}, 1);  		
+		setTimeout(function(){checkText(cm, updateLinting, value)}, 1);  		
 
 	});
 

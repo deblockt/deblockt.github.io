@@ -1,5 +1,5 @@
 // a syntaxique validator for easyCode
-define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCodeConfiguration, CodeMirror){
+define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext'], function(easyCodeConfiguration, CodeMirror, Context){
 
 	// add utils function
 	CodeMirror.StringStream.prototype.eatTo = function(ch, returnRead) {
@@ -108,6 +108,12 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 		},
 		'stringNotEnded' : {
 			message : 'Votre chaine de caractére n\'est pas fermée. Elle doit être fermée avec le caractére {0}. Par exemple "Bonjour j\\"aime les chats" ou \'Bonjour j\\\'aime les chats\''
+		},
+		'variableAlreadyDefined' : {
+			message : 'La variable {0} est déjà définie'
+		},
+		'variableNotDefined' : {
+			message : 'La variable {0} n\'est pas définie'
 		}
 	};
 	
@@ -156,7 +162,9 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 			"*" : 0,
 			"/" : 0,
 			"%" : 0
-		}
+		};
+		
+		this.definedVars = {};
 	};
 	
 	LanguageRunnerFactory.prototype = {
@@ -342,7 +350,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 		}
 	};
 	
-	var Parser = function(factory) {
+	var Parser = function(factory, parentContext) {
 		this.languageRunnerFactory = factory || new LanguageRunnerFactory();
 		this.languageInstruction = {
 			'ECRIRE'	: this.parseWrite,
@@ -363,24 +371,18 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 			'in'	: 'DANS',
 			'step'	: 'PAR',
 		};
-		this.writeOutput = {
-			erreur : 'error',
-			info : 'info'
-		};
-		this.languageWord = ['NOMBRE', 'CHAINE', 'TABLEAU', 'BOOLEAN', 'ECRIRE', 'DEFINIR', 'LIRE', 'SI', 'TANT_QUE', 'POUR', 'SI_NON_SI', 'SI_NON', 'FIN_SI', 'FIN_POUR', 'FIN_TANT_QUE', 'FIN_POUR', 'A', 'DE', 'DANS', 'PAR'];
+		this.writeOutput = easyCodeConfiguration.writeOutput();
+		
+		this.languageWord = ['NOMBRE', 'CHAINE', 'TABLEAU', 'BOOLEEN', 'ECRIRE', 'DEFINIR', 'LIRE', 'SI', 'TANT_QUE', 'POUR', 'SI_NON_SI', 'SI_NON', 'FIN_SI', 'FIN_POUR', 'FIN_TANT_QUE', 'FIN_POUR', 'A', 'DE', 'DANS', 'PAR'];
 		this.numberRegex = /[0-9]/;
 		this.varnameRegex = /[a-zA-Z0-9_]/;
 		this.operationRegex = /[+\-*\/%]/;
 		this.spaces = /[\ \t]/;
-		this.booleanName = {VRAI : true, FAUX : false};
+		this.booleanName = easyCodeConfiguration.getBooleanName();
 		this.booleanOperation = {ET : '&&', OU : '||'};
-		this.varTypes = {
-			NOMBRE	: 'number',
-			CHAINE	: 'string',
-			TABLEAU : 'array',
-			BOOLEEN : 'boolean'
-		};
+		this.varTypes = easyCodeConfiguration.getVarTypes();
 		this.END_OF_BLOCK = 'endOfBlock';
+		this.context = new Context(parentContext);
 	};
 	
 	Parser.prototype = {
@@ -430,7 +432,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 					
 					// is a end block stop immediatly to parse
 					if (typeof line == "string" && line.indexOf(this.END_OF_BLOCK) === 0) {
-						return {endInstruction : line.slice(this.END_OF_BLOCK.length + 1, line.length), result : parseResult, errors : errors};
+						return {endInstruction : line.slice(this.END_OF_BLOCK.length + 1, line.length), result : parseResult, errors : errors, context : this.context};
 					} else {
 						this.checkEndOfLine();
 						if (line != undefined) {
@@ -456,7 +458,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 				throw new ParseException('blockNotEnded', [endBlock], startParsing, this.stream.pos);
 			}
 			
-			return {errors : errors, result : parseResult};			
+			return {errors : errors, result : parseResult, context : this.context};			
 		},
 		/**
 		 * parse a line code, all line type can be parse affectation, write, etc.
@@ -526,6 +528,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 		 * parse a define line DEFINIR varname vartype
 		 */
 		parseDefine : function() {
+			var beforeVarName = this.stream.pos;
 			var varname = this.parseVarname();
 			if (this.stream.eatWhile(this.spaces)) {
 				var beforeType = this.stream.pos;
@@ -533,6 +536,12 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 				if (!(varType in this.varTypes)) {
 					throw new ParseException('typeNotExist', undefined, beforeType, this.stream.pos);
 				}
+				// add the var on the context
+				if (this.context.isset(varname, false)) {
+					throw new ParseException('variableAlreadyDefined', [varname], beforeVarName, beforeType);
+				}
+				this.context.defineVar(varname, this.varTypes[varType]);
+				
 				return this.languageRunnerFactory.createDefine(varname, this.varTypes[varType], this.languageRunnerFactory.createOffset(this));
 			} 
 
@@ -544,6 +553,10 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 		parseRead : function() {
 			var name = this.parseVarname();
 			var varcall = this.parseVarCall(name, false);
+			
+			if (!this.context.isset(name, false)) {
+				throw new ParseException('variableNotDefined', [name], this);
+			}
 			
 			return this.languageRunnerFactory.createRead(varcall, this.languageRunnerFactory.createOffset(this));
 		},
@@ -567,8 +580,13 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 		 * parse a sub block used for if while for
 		 */
 		parseChild : function(endBlock) {
-			var parser = new Parser();
+			var parser = new Parser(this.languageRunnerFactory, this.context);
+			var from = this.stream.pos;
 			var body = parser.parse(this.stream, endBlock);
+			var to = this.stream.pos;
+			
+			body.context.setRange(from, to);
+			
 			if (body.errors && body.errors.length > 0) {
 				throw {errors : body.errors};
 			}
@@ -905,7 +923,15 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror'], function(easyCode
 					if (varname in this.booleanName) {
 						return this.booleanName[varname];
 					}
-					return this.parseVarCall(varname, true);
+					var ret = this.parseVarCall(varname, true);
+					// if it's variable check is var isser
+					if (ret.type == 'var') {
+						if (!this.context.isset(ret.name, false)) {
+							throw new ParseException('variableNotDefined', [ret.name], ret.offset);
+						}						
+					}
+					
+					return ret;
 				} else if (this.numberRegex.test(curCh)){
 					return this.parseNumber();
 				}

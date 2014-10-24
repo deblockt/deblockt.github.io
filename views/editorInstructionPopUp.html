@@ -1,0 +1,270 @@
+﻿<div class="modal-header">
+	<button type="button" class="close" ng-click="close(true)"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+	<h3 class="modal-title"> Ajout d'une instruction <span ng-if="selected.title"> > {{selected.title}}</span> </h3>
+</div>
+<div class="modal-body row">
+	<!-- selection menu -->
+	<div class="type-selection col-sm-4">
+		<accordion close-others="true">
+			<accordion-group is-open="sectionContent.open" ng-repeat="(sectionName, sectionMenus) in sections">
+				<accordion-heading>
+					{{sectionName}} <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sectionContent.open, 'glyphicon-chevron-right': !sectionContent.open}"></i>
+				</accordion-heading>
+				<div  
+					ng-if="menuName != 'open'" 
+					ng-repeat="(menuName, action) in sectionMenus"
+					ng-click="setSelected(action)"
+				>
+					{{menuName}} 
+				</div>
+			</accordion-group >
+		</accordion>
+	</div>
+
+	
+	<div class="ins-body col-sm-8" >
+		<form class="form-horizontal" role="form" name="insForm">
+			<!-- cas de la création de l'instruction define -->
+			<div ng-if="selected.id == 'define'">
+				<div class="alert alert-info" role="alert"> 
+					Une variable sert à stocker des informations pour les utiliser par la suite dans des calculs. Pour utiliser une variable dans un pogramme il faut dans un premier temps la déclarer pour indiquer le type de la variable.
+				</div>
+				
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
+					<label for="varname"  class="col-sm-4 control-label"> Nom de la variable </label>
+					<div class="col-sm-7">
+						<input  class="form-control" name="varname" type="text" id="varname" ng-model="selected.varname" required/>
+						
+						<span class="glyphicon glyphicon-remove form-control-feedback" ng-if="isValidated && insForm.varname.$error.required"></span>
+						<span class="error help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
+					</div>
+				</div>
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.vartype.$error.required}">
+					<label for="type"  class="col-sm-4 control-label"> Type de la variable </label>
+					<div class="col-sm-7">
+						<select name="vartype" class="form-control" id="type" ng-model="selected.type" required>
+							<option ng-repeat="(type, _) in configuration.varTypes | orderBy:type:reverse" value="{{type}}">{{type}}</option>
+						</select>
+						<span class="error help-block" ng-show="isValidated && insForm.vartype.$error.required">Obligatoire</span>
+					</div>
+				</div>
+			</div>
+			
+			<!-- cas de la lecture d'une variable -->
+			<div ng-if="selected.id == 'read'">
+				<div class="alert alert-info" role="alert"> 
+					L'instruction lire permet de demander une information à l'utilisateur. L'information doit être stockée dans une variable déclarée précédemment. 
+				</div>
+				
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
+					<label for="varname"  class="col-sm-4 control-label"> Nom de la variable </label>
+					<div class="col-sm-7">
+						<select name="varname" class="form-control" id="varname" ng-model="selected.varname" required>
+							<option ng-repeat="(varName, varType) in vars | orderBy:varName:reverse" value="{{varName}}">{{varName}} ({{configuration.translateVarType[varType]}})</option>
+						</select>
+						<span class="error help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
+					</div>
+				</div>
+			</div>
+			
+			<!-- cas de la lecture d'une variable -->
+			<div ng-if="selected.id == 'write'">
+				<div class="alert alert-info" role="alert"> 
+					L'instruction Ecrire permet d'écrire un message à l'utilisateur. Vous pouvez écrire un message simple, ou un calcul, ou une expression quelconque.
+				</div>
+				
+				<div class="form-group">
+					<label for="expression"  class="col-sm-4 control-label"> Expression : </label>
+					<div class="col-sm-7">
+						<input type="text" id="expression" ng-model="selected.expression" name="expression" class="form-control"/>
+						<div class="help-block">
+							Peut être un calcul, un appel à une fonction, un calcul etc.
+						</div>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="message"  class="col-sm-4 control-label"> Ou un Message : </label>
+					<div class="col-sm-7">
+						<input type="text" id="message" ng-model="selected.message" name="message" class="form-control"/>
+						<div class="help-block">
+							un simple message text
+						</div>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="output"  class="col-sm-4 control-label"> Sortie du message : </label>
+					<div class="col-sm-7">
+						<select name="output" ng-model="selected.output" name="output" class="form-control">
+							<option value=""></option>
+							<option value="{{name}}" ng-repeat="(name, _) in configuration.writeOutput()"> {{name}} </option>
+						</select>
+						<div class="help-block">
+							La sortie permet d'affiche le message dans différentes couleurs, blanc par défaut, rouge sur la sortie erreur, vert sur la sortie info
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<!-- cas de l'affectation d'une variable -->
+			<div ng-if="selected.id == 'afectation'">
+				<div class="alert alert-info" role="alert"> 
+					L'affectation permet de modifier la valeur d'une variable. Un affectation affecte une expression à une variable, une expression peut être un calcul, une chaine de caractére, une autre variable, etc...
+				</div>
+				
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
+					<label for="varname"  class="col-sm-4 control-label"> Nom de la variable à modifier </label>
+					<div class="col-sm-7">
+						<select name="varname" class="form-control" id="varname" ng-model="selected.varName" ng-change="selected.varType = vars[selected.varName]" required>
+							<option ng-repeat="(varName, varType) in vars | orderBy:varName:reverse" value="{{varName}}">{{varName}} ({{configuration.translateVarType[varType]}})</option>
+						</select>
+						<span class="error help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
+					</div>
+				</div>
+				
+				<!-- La gestion des tableaux se fait sans expression -->
+				<div class="form-group" ng-if="selected.varType != 'array'">
+					<label for="expression"  class="col-sm-4 control-label"> Expression : </label>
+					<div class="col-sm-7">
+						<input type="text" id="expression" ng-model="selected.expression" name="expression" class="form-control"/>
+						<div class="help-block">
+							Peut être un calcul, un appel à une fonction, etc...  
+							<span ng-if="selected.varType == 'string'">
+								Exemple : "Bonjour " + uneVariable
+							</span>
+							<span ng-if="selected.varType == 'number'">
+								Exemple : (1 + 8) / 9 ou arondi_inferieur(1 + variable)
+							</span>
+							
+							<span ng-if="selected.varType == 'boolean'">
+								Exemple : vrai ou faux ou une expression boolean (1 == uneVariable et 2 <= uneAutreVariable)
+							</span>
+						</div>
+					</div>
+				</div>
+				<!-- Pour les chaines de caractére on peut entrer directement un message -->
+				<div class="form-group" ng-if="selected.varType == 'string'">
+					<label for="message"  class="col-sm-4 control-label"> Ou chaine de caractére : </label>
+					<div class="col-sm-7">
+						<input type="text" id="message" ng-model="selected.message" name="message" class="form-control"/>
+						<div class="help-block"> Ecrivez le contenu de la chaine de caractére </div>
+					</div>
+				</div>
+				<!-- pour les nombre on peut entrer directement un nombre -->
+				<div class="form-group" ng-if="selected.varType == 'number'">
+					<label for="number"  class="col-sm-4 control-label"> Ou un nombre : </label>
+					<div class="col-sm-7">
+						<input type="text" id="number" ng-model="selected.number" name="number" class="form-control"/>
+						<div class="help-block"> Ecrivez un nombre. Exemple : 1 ou 1.2 ou 1,5 </div>
+					</div>
+				</div>
+				<!-- pour les boolean on peut selectionner la valeur dans une liste déroulante -->
+				<div class="form-group" ng-if="selected.varType == 'boolean'">
+					<label for="boolean"  class="col-sm-4 control-label"> Ou un booleen : </label>
+					<div class="col-sm-7">
+						<select ng-model="selected.boolean" name="boolean" class="form-control" id="boolean">
+							<option ng-repeat="(boolValue, _) in configuration.booleanName" value="{{boolValue}}"> {{boolValue}} </option>
+						</select>
+						<div class="help-block"> Selectionnez vrai ou faux </div>
+					</div>
+				</div>
+				<!-- Pour les tableaux on peut soit ajouter un element au tableau (par index (clef value), seulement un element) -->
+				
+				<!-- proposition de deux types de tableaux (simple ou clef valeurs) -->
+				<div class="form-group" ng-if="selected.varType == 'array'" ng-class="{'has-error has-feedback' : isValidated && insForm.arrayType.$error.required}">
+					<label for="arrayType"  class="col-sm-4 control-label"> Type de tableau : </label>
+					<div class="col-sm-7">
+						<select ng-model="selected.arrayType" name="arrayType" class="form-control" id="arrayType" required>
+							<option value="1"> Tableau simple </option>
+							<option value="2"> Tableau clef => valeurs </option>
+							<option value="3"> Modifier une seul cellule </option>
+						</select>
+						<span class="error help-block" ng-show="isValidated && insForm.index.$error.required">Obligatoire</span>
+						<div class="help-block"> Un tableau simple est une suite de valeurs. Un tableau clef => valeur est un tableau qui associe une clef à une valeur. </div>
+					</div>
+				</div>
+
+				<!-- tableau simple , suite de valeurs -->
+				<div class="form-group" ng-if="selected.varType == 'array' && selected.arrayType == 1">
+					<label for="arrayType"  class="col-sm-4 control-label"> Liste de valeurs : </label>
+					<div class="col-sm-7">
+						<div class="help-block"> chaque champ peut être un nombre, une chaine, un booleen, une expression, une calcul, etc... Laissez vide pour vider le tableau. </div>
+						<div ng-repeat="arrayValue in selected.arrayValues track by $index" class="row">
+							<div class="col-sm-10">
+								<input type="text" ng-model="arrayValue" class="form-control"/>
+							</div>
+							<span ng-click="removeArray($index)" class="glyphicon glyphicon-minus-sign col-sm-2 cursor" style="margin-top : 5px" ></span>
+						</div>
+						<div class="row">
+							<div class="col-sm-10">
+								<input placeholder="Entrez une valeur" type="text" ng-model="selected.arrayCurrentValue" class="form-control"/> 
+							</div>
+							<span ng-click="addArrayValue()" class="glyphicon glyphicon-plus-sign col-sm-2 cursor" style="margin-top : 5px" ></span>							
+						</div>
+						
+					</div>
+				</div>
+
+				<!-- simple modification de cellule -->
+				<div class="form-group" ng-if="selected.varType == 'array' && selected.arrayType == 3" >
+					<label for="index"  class="col-sm-4 control-label"> Indice : </label>
+					<div class="col-sm-7">
+						<input ng-model="selected.index" type="text" name="index" class="form-control"  />
+						
+						<div class="help-block"> Indice dans le tableau : nombre, chaine, expression. Si aucune valeur n'est précisée, la valeur est ajoutée à la fin du tableau. </div>
+					</div>
+				</div>
+
+				<!-- valeur de la cellule -->
+				<div class="form-group" ng-if="selected.varType == 'array' && selected.arrayType == 3" ng-class="{'has-error has-feedback' : isValidated && insForm.expression.$error.required}">
+					<label for="expression"  class="col-sm-4 control-label"> Valeur : </label>
+					<div class="col-sm-7">
+						<input ng-model="selected.expression" type="text" name="expression" class="form-control" required />
+						<span class="error help-block" ng-show="isValidated && insForm.expression.$error.required">Obligatoire</span>
+						<div class="help-block"> L'expression a insérer dans le tableau. </div>
+					</div>
+				</div>
+				
+				
+				<!-- tableau clef valeur -->
+				<div class="form-group" ng-if="selected.varType == 'array' && selected.arrayType == 2">
+					<label for="arrayType"  class="col-sm-4 control-label"> Liste de valeurs : </label>
+					<div class="col-sm-7">
+						<div class="help-block"> chaque champ peut être un nombre, une chaine, un booleen, une expression, une calcul, etc... Laissez vide pour vider le tableau. </div>
+						<div ng-repeat="arrayValue in selected.arrayValues track by $index" class="row">
+							<div class="col-sm-4">
+								<input type="text" ng-model="arrayValue.key" class="form-control"/>
+							</div>
+							<div class="col-sm-6">
+								<input type="text" ng-model="arrayValue.value" class="form-control"/>
+							</div>
+							<span ng-click="removeArray($index)" class="glyphicon glyphicon-minus-sign col-sm-2 cursor" style="margin-top : 5px" ></span>
+						</div>
+						<div class="row">
+							<div class="col-sm-4">
+								<input placeholder="Clef de la valeur" type="text" ng-model="selected.arrayCurrentValue.key" class="form-control"/> 
+							</div>
+							<div class="col-sm-6">
+								<input placeholder="Valeur de la cellule" type="text" ng-model="selected.arrayCurrentValue.value" class="form-control"/> 
+							</div>
+							<span ng-click="addArrayValue()" class="glyphicon glyphicon-plus-sign col-sm-2 cursor" style="margin-top : 5px" ></span>							
+						</div>
+						
+					</div>
+				</div>
+				
+				
+				
+			</div>
+			
+		</form>
+	</div>
+
+	<div class="clearfix"></div>
+
+</div>
+<div class="modal-footer" >	
+	<button class="btn btn-success" ng-click="validateForm() && close(false)"> Ok </button>
+	<button class="btn btn-warning" ng-click="close(true)"> Quitter </button>
+</div>

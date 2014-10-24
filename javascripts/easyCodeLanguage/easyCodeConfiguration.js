@@ -64,6 +64,36 @@
 		'FIN_TANT_QUE' : {error : 'un FIN_TANT_QUE doit avoir un TANT_QUE correspondant.', startTag : 'while'}
 	};
 	
+	config.varTypes = {
+		NOMBRE	: 'number',
+		CHAINE	: 'string',
+		TABLEAU : 'array',
+		BOOLEEN : 'boolean'
+	};
+
+	config.booleanName = {VRAI : true, FAUX : false};
+	
+	config.translateVarType = {};
+	
+	config.writeOutput = function() {
+		return {
+			erreur : 'error',
+			info : 'info'
+		};
+	}
+		
+	for (var i in config.varTypes) {
+		config.translateVarType[config.varTypes[i]] = i;
+	}
+	
+	config.getBooleanName = function(){
+		return config.booleanName;
+	}
+	
+	config.getVarTypes = function() {
+		return config.varTypes;
+	}
+
 	// functions
 	config.getFunctions = function(){
 		return this.functions;

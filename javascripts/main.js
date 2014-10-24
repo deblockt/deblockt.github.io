@@ -20,6 +20,8 @@ require.config({
 		easyCodeValidator : '../javascripts/easyCodeLanguage/easyCodeValidator',
 		easyCodeConfiguration : '../javascripts/easyCodeLanguage/easyCodeConfiguration',
 		easyCodeSyntaxHighlighter : '../javascripts/easyCodeLanguage/easyCodeSyntaxHighlighter',
+		easyCodeContext : '../javascripts/easyCodeLanguage/easyCodeContext',
+		easyCodeRuntimeException : '../javascripts/easyCodeLanguage/easyCodeRuntimeException',
 		terminalEmulator : '../javascripts/terminalEmulator/vtortola.ng-terminal',
 		routes : '../javascripts/routes',
 		appDir : '../javascripts/',
@@ -68,6 +70,9 @@ require.config({
 			],
 			exports : 'controllers/easyCodeEditor'
 		},
+		'ng-flow/dist/ng-flow-standalone' : {
+			deps : ['angular']
+		},
 		app : {
 			deps: [
 				'angular',
@@ -76,7 +81,8 @@ require.config({
 				'routes',
 				'angularBootstrap',
 				'terminalEmulator',
-				'angular-ui-codemirror/ui-codemirror'
+				'angular-ui-codemirror/ui-codemirror',
+				'ng-flow/dist/ng-flow-standalone'
 			],
 			exports: 'app'
 		}

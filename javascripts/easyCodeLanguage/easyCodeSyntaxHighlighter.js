@@ -60,7 +60,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     }
 	// cas d'un nombre
     if (/\d/.test(ch)) {
-      stream.eatWhile(/[\w\.]/);
+      stream.eatWhile(/[\w\.\,]/);
       return "number";
     }
 	
@@ -193,6 +193,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     },
 
     indent: function(state, textAfter) {
+	  console.log(state, textAfter);
 	  var blockName = state.context.blockName ? state.context.blockName.toUpperCase() : '';
   	  // if it's a end statement, this is reindented with -indentUnit
   	  if (blockKeywords[blockName] && blockKeywords[blockName].indexOf(textAfter.toUpperCase()) >= 0) {
@@ -201,7 +202,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
   			state.context.indented = 0;
   		}
   	  }
-	  
+	  console.log((state.context ? state.context.indented : 0));
       return (state.context ? state.context.indented : 0);
     },
 	  electricInput: electricInputRegex,

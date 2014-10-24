@@ -1,6 +1,6 @@
 ﻿define(function (require) {
 	
-	var app = angular.module('easyCodeApp', ['ngRoute', 'ui.bootstrap', 'ui.codemirror', 'vtortola.ng-terminal']);
+	var app = angular.module('easyCodeApp', ['ngRoute', 'ui.bootstrap', 'ui.codemirror', 'vtortola.ng-terminal', 'flow']);
 	
 
 	// controller for header actions
@@ -31,6 +31,9 @@
         '$provide',
         function($routeProvider, $locationProvider, $controllerProvider, $compileProvider, $filterProvider, $provide, terminalConfigurationProvider)
         {
+			// allow blob link
+			$compileProvider.aHrefSanitizationWhitelist(/^\s*(blob):/);
+		
         	app.controller = function(name, constructor) {
         		$controllerProvider.register(name, constructor);
         		return this;

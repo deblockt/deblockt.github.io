@@ -1,4 +1,4 @@
-﻿<div>
+﻿<div flow-prevent-drop flow-drag-enter="dragEnter = true" flow-drag-leave="dragEnter = false">
 	<tabset>
 		<tab ng-repeat="tab in tabs" active="tab.active">	
 		  <tab-heading>
@@ -21,24 +21,48 @@
 			</i>
 	      </tab-heading>
 		  <textarea ui-codemirror="editorConfiguration(tab)" ui-refresh="tab.active" ng-model="tab.content"></textarea>
+		  
+
 		</tab>
 		<tab ng-click="addTab()">
-			<tab-heading>
-				<i class="glyphicon glyphicon-plus-sign"></i>
+			<tab-heading >
+				<i class="glyphicon glyphicon-plus-sign" ></i>
 			</tab-heading>
 		</tab>
 	</tabset>
 
 
-	<div class="btn-group">
-		<button type="button" class="btn btn-default" ng-click="runAlgo()"> <i class="glyphicon glyphicon-cog"></i> Executer l'algorithme</button>
-		<button type="button" class="btn btn-default" ng-click="clearConsole()"><i class="glyphicon glyphicon-trash"></i> Vider la console</button>
-		<button type="button" class="btn btn-default" ng-click="saveAlgo()" ng-if="fsSupported"><i class="glyphicon glyphicon-floppy-disk"></i> Enregistrer l'algorithme </button>
+	<div flow-init flow-drop flow-file-added="fileAdded($file, $event, $flow)" >
+		<div class="btn-group" ng-if="!dragEnter">
+			<button type="button" class="btn btn-default" ng-click="runAlgo()" title="Executer l'algorithme"> 
+				<i class="glyphicon glyphicon-cog"></i> <span class="hidden-xs">Executer l'algorithme</span>
+			</button>
+			<button type="button" class="btn btn-default" ng-click="clearConsole()" title="Vider la console">
+				<i class="glyphicon glyphicon-trash"></i> <span class="hidden-xs">Vider la console</span>
+			</button>
+			<button type="button" class="btn btn-default" ng-click="saveAlgo()" ng-if="fsSupported" title="Enregistrer">
+				<i class="glyphicon glyphicon-floppy-disk"></i> <span class="hidden-xs">Enregistrer</span>
+			</button>
+			<a class="btn btn-default" download="{{downloadAlgoFileName}}.easyCode" ng-click="downloadAlgo()" ng-href="{{downloadAlgoUrl}}" title="Telecharger">
+				<i class="glyphicon glyphicon-download"></i> <span class="hidden-xs">Telecharger</span>
+			</a>
+			<span class="btn btn-default" flow-btn title="Uploader" >
+				<i class="glyphicon glyphicon-upload"></i> <span class="hidden-xs" >Uploader </span>
+			</span>
+			<button type="button" class="btn btn-default" ng-click="openInstructionPopUp()" title="Instruction">
+				<i class="glyphicon glyphicon-plus"></i><span class="hidden-xs">Instruction </span>
+			</button>
+		</div>
+		<div ng-if="dragEnter" class="dropArrea">
+			<span> <i class="glyphicon glyphicon-download"></i> Deposez votre fichier ici</span>
+		</div>
 	</div>
-
+		
 	<div>
 	    <terminal terminal-config="vintage" id="terminal">
 	    </terminal>
 	</div>
 
 </div>
+
+
