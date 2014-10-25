@@ -71,6 +71,10 @@
 				if (this.fatalError) {
 					return;
 				}
+				// no line to call, runLine never call, so we can call endOfLineHandler
+				if (this.lines.length == 0) {
+					this.endOfLineHandler();
+				}
 				if (this.currentLine < this.lines.length) {
 	 				// call run line function (not in context class)
 	 				var _this = this;
@@ -109,8 +113,6 @@
 					// call the block next line if the child is finish
 					if (_this.haveARunningChild() !== true && _this.currentLine < _this.lines.length) {
 	 					_this.runNextLine();
-	 				} else {
-	 					//_this.endOfLineHandler();
 	 				}
 				});
 				

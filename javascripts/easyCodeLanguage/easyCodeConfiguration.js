@@ -8,7 +8,6 @@
 			max = max || 100;
 			return Math.floor(Math.random() * max + min);
 		},
-		'racine_carree' : Math.sqrt,
 		'en_entier' : function(value) {
 			return parseInt(value, 10);
 		},
@@ -22,10 +21,50 @@
 			}
 			return size;
 		},
+		'racine_carree' : Math.sqrt,
+		'puissance' : Math.pow,
 		'arondi_inferieur' : Math.floor,
-		'arondi_superieur' : Math.ceil	
+		'arondi_superieur' : Math.ceil,
+		'arondi' : Math.round,
+		'cosinus' : Math.cos,
+		'sinus' : Math.sin,
+		'tangente' : Math.tan,
+		'exponentielle' : Math.exp,
+		'arctangente' : Math.atan,
+		'arcsinus' : Math.asin,
+		'arccosinus' : Math.acos,
+		'abs' : Math.abs,
+		'logarithme' : Math.log,
+		'radians' : function(degrees) {
+		  return degrees * Math.PI / 180;
+		},
+ 		'degre' : function(radians) {
+		  return radians * 180 / Math.PI;
+		}
 	};
 	
+	config.functionsDescription = {
+		'aleatoire' : 'Permet de retourner un nombre au hasard entre un minimum et un maximum. par exemple aleatoir(0; 10) retourne un nombre entre 0 et 10.',
+		'taille' : 'Permet de connaitre la taille d\'un tableau',
+		'en_entier' : 'Permet de convertir une chaine de caractére en un nombre',
+		'racine_carree' : 'Permet de calculer la racine carée d\'un nombre',
+		'arondi_inferieur' : 'Permet d\'arondir un nombre à l\'entier inférieur le plus proche',
+		'arondi_superieur' : 'Permet d\'arondir un nombre à l\'entier superieur le plus proche',
+		'arondi' : 'Permet de calculer l\'arondi le plus proche du nombre',
+		'puissance' : 'Permet de mettre un nombre à la puissance x puissance(nombre; x). Exemple : 4*4*4 = puissance(4; 3)',
+		'cosinus' : 'Permet de calculer le cosinus du paramétre',
+		'sinus' : 'Permet de calculer le sinus du paramétre',
+		'tangente' : 'Permet de calculer la tangente du paramétre. Le paramétre doit être en radians',
+		'exponentielle' : 'Permet de calculer l\'exponentielle du nombre passé en paramétre',
+		'arctangente' : 'Permet de calculer l\'arctangente du paramétre',
+		'arcsinus' : 'Permet de calculer l\'arcsinus du paramétre',
+		'arccosinus' : 'Permet de calculer l\'arccosinus du paramétre',
+		'abs' : 'Retourne la valeur absolue du paramétre',
+		'radians' : 'Converti le paramétre de degré en radian',
+		'degre' : 'Converti le paramétre de radian en degré',
+		'logarithme' : 'Calcul logarithme népérien du paramétre'
+	};
+
 	// list of javascript function to ignore
 	config.skipedFunction = ['eval'];
 	
@@ -99,6 +138,10 @@
 		return this.functions;
 	}
 	
+	config.getFunctionsDescription = function() {
+		return this.functionsDescription;
+	}
+
 	config.getSkipedFunction = function() {
 		return this.skipedFunction;
 	}

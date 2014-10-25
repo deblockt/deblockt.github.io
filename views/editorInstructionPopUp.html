@@ -5,13 +5,13 @@
 <div class="modal-body row">
 	<!-- selection menu -->
 	<div class="type-selection col-sm-4">
-		<accordion close-others="true">
-			<accordion-group is-open="sectionContent.open" ng-repeat="(sectionName, sectionMenus) in sections">
+		<accordion close-others="true" ng-show="help == null">
+			<accordion-group is-open="sectionContent.open" ng-repeat="sectionMenus in sections | orderObjectBy:'position':false">
 				<accordion-heading>
-					{{sectionName}} <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sectionContent.open, 'glyphicon-chevron-right': !sectionContent.open}"></i>
+					{{sectionMenus.key}} <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sectionContent.open, 'glyphicon-chevron-right': !sectionContent.open}"></i>
 				</accordion-heading>
 				<div  
-					ng-if="menuName != 'open'" 
+					ng-if="menuName != 'open' && menuName != 'key' && menuName != 'position'" 
 					ng-repeat="(menuName, action) in sectionMenus"
 					ng-click="setSelected(action)"
 				>
@@ -19,6 +19,30 @@
 				</div>
 			</accordion-group >
 		</accordion>
+		<div class="panel panel-default" ng-if="help != undefined">			
+			<div ng-id="help.title != undefined" class="panel-heading">
+				<button type="button" class="close" ng-click="closeHelp()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+		
+				<h4 class="panel-title">{{help.title}}</h4>
+			</div>
+			<!-- Affichage de l'aide des fonctions -->
+			<div ng-if="help.id == 'functions'" class="panel-body">
+				<div ng-repeat="(key, function) in functions">
+					<span  tooltip="{{functionsDescription[key]}}" tooltip-placement="right">
+						{{key}}
+					</span>
+				</div>
+			</div>
+
+			<!-- Affichage de l'aide des variables-->
+			<div ng-if="help.id == 'variables'" class="panel-body">
+				<div ng-repeat="(name, type) in vars">
+					<span >
+						{{name}} : {{configuration.translateVarType[type]}}
+					</span>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	
@@ -116,8 +140,8 @@
 				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
 					<label for="varname"  class="col-sm-4 control-label"> Nom de la variable à modifier </label>
 					<div class="col-sm-7">
-						<select name="varname" class="form-control" id="varname" ng-model="selected.varName" ng-change="selected.varType = vars[selected.varName]" required>
-							<option ng-repeat="(varName, varType) in vars | orderBy:varName:reverse" value="{{varName}}">{{varName}} ({{configuration.translateVarType[varType]}})</option>
+						<select name="varname" class="form-control" id="varname" ng-model="selected.varname" ng-change="selected.varType = vars[selected.varname]" required>
+							<option ng-repeat="(varname, varType) in vars | orderBy:varname:reverse" value="{{varname}}">{{varname}} ({{configuration.translateVarType[varType]}})</option>
 						</select>
 						<span class="error help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
 					</div>
@@ -169,6 +193,7 @@
 						<div class="help-block"> Selectionnez vrai ou faux </div>
 					</div>
 				</div>
+				
 				<!-- Pour les tableaux on peut soit ajouter un element au tableau (par index (clef value), seulement un element) -->
 				
 				<!-- proposition de deux types de tableaux (simple ou clef valeurs) -->
@@ -253,11 +278,132 @@
 						
 					</div>
 				</div>
-				
-				
-				
 			</div>
-			
+
+			<!-- cas de la structure conditionnel -->
+			<div ng-if="selected.id == 'if'">
+				<div class="alert alert-info" role="alert"> 
+					Un condition permet d'executer une portion en code en fonction d'un test. Si le test est vrai alors la premiére portion de code est executé, si non les instructions sous le "si_non" sont executées.
+				</div>
+
+				<!-- test du si -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.test.$error.required}">
+					<label for="test"  class="col-sm-4 control-label"> Condition </label>
+					<div class="col-sm-7">
+						<input name="test" class="form-control" id="test" ng-model="selected.test" required/>
+						<span class="eror help-block" ng-show="isValidated && insForm.test.$error.required">Obligatoire</span>
+						<span class="help-block">Si cette condition vaut vrai alors le code sous le SI sera executé.</span>
+					</div>
+				</div>
+
+				<!-- add else if block -->
+
+
+				<!-- add a else block -->
+				<div class="checkbox">
+				    <label>
+				      <input type="checkbox" ng-model="selected.elseBlock"> Ajouter un bloc SI_NON
+				    </label>
+				    <span class="help-block">Si cette case est coché un block SI_NON va être ajouté. Le block SI_NON est executé si le test est faux. </span>
+					
+				</div>
+			</div>			
+
+			<!-- cas de la boucle tant que -->
+			<div ng-if="selected.id == 'while'">
+				<div class="alert alert-info" role="alert"> 
+					Une boucle tant_que premet d'executer une suite de ligne plusieurs fois. Le nombre de fois est conditionnée par une condition, la boucle s'arréte quad la condition passe à faux.
+				</div>
+
+				<!-- test du si -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.test.$error.required}">
+					<label for="test"  class="col-sm-4 control-label"> Condition </label>
+					<div class="col-sm-7">
+						<input name="test" class="form-control" id="test" ng-model="selected.test" required/>
+						<span class="eror help-block" ng-show="isValidated && insForm.test.$error.required">Obligatoire</span>
+						<span class="help-block">Tant que cette condition vaux vrai le code du tant_que est executé.</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- cas de la boucle foreach -->
+			<div ng-if="selected.id == 'foreach'">
+				<div class="alert alert-info" role="alert"> 
+					Cette boucle permet de parcourir les valeurs un tableau.
+				</div>
+
+				<!-- variable à parcourir -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.array.$error.required}">
+					<label for="array"  class="col-sm-4 control-label"> Tableau </label>
+					<div class="col-sm-7">
+						<select name="array" class="form-control" id="array" ng-model="selected.array" required>
+							<option value="{{varname}}" ng-repeat="(varname, vartype) in this.vars | filter:{vartype : 'array'}">
+								{{varname}}
+							</option>
+						</select>
+						<span class="eror help-block" ng-show="isValidated && insForm.array.$error.required">Obligatoire</span>
+						<span class="help-block">Le tableau à parcourir.</span>
+					</div>
+				</div>
+
+				<!-- nom de la variable à affecter -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
+					<label for="array"  class="col-sm-4 control-label"> Nom de la variable </label>
+					<div class="col-sm-7">
+						<input type="text" name="varname" class="form-control" id="varname" ng-model="selected.varname" required />
+						<span class="eror help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
+						<span class="help-block">Le nom de la variable ou seront stockée les valeurs du tableau.</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- cas de la boucle for -->
+			<div ng-if="selected.id == 'for'">
+				<div class="alert alert-info" role="alert"> 
+					Cette boucle de réaliser un parcourt entre deux nombre.
+				</div>
+
+				<!-- variable à parcourir -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.varname.$error.required}">
+					<label for="varname"  class="col-sm-4 control-label"> Nom de la variable </label>
+					<div class="col-sm-7">
+						<input type="text" name="varname" class="form-control" id="varname" ng-model="selected.varname" required />
+						<span class="eror help-block" ng-show="isValidated && insForm.varname.$error.required">Obligatoire</span>
+						<span class="help-block">Le nom de la variable ou seront stockée les valeurs du tableau.</span>
+					</div>
+				</div>
+
+				<!-- borne de début -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.start.$error.required}">
+					<label for="start"  class="col-sm-4 control-label"> Borne de départ </label>
+					<div class="col-sm-7">
+						<input type="text" name="start" class="form-control" id="start" ng-model="selected.start" required/>
+						<span class="eror help-block" ng-show="isValidated && insForm.start.$error.required">Obligatoire</span>
+						<span class="help-block">La borne de départ de la boucle, ce nombre est inclu. Peut être un nombre, ou une expression. Par exemple : 1 ou (1 + 8 / 5) ou taille(tableau). </span>
+					</div>
+				</div>
+
+				<!-- borne de fin -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.end.$error.required}">
+					<label for="end"  class="col-sm-4 control-label"> Borne de fin </label>
+					<div class="col-sm-7">
+						<input type="text" name="end" class="form-control" id="end" ng-model="selected.end" required/>
+						<span class="eror help-block" ng-show="isValidated && insForm.end.$error.required">Obligatoire</span>
+						<span class="help-block">La borne de fin de la boucle, ce nombre est inclu. Peut être un nombre, ou une expression. Par exemple : 1 ou (1 + 8 / 5) ou taille(tableau). </span>
+					</div>
+				</div>
+
+				<!-- step -->
+				<div class="form-group" ng-class="{'has-error has-feedback' : isValidated && insForm.step.$error.required}">
+					<label for="step"  class="col-sm-4 control-label"> Pas </label>
+					<div class="col-sm-7">
+						<input type="text" name="step" class="form-control" id="step" ng-model="selected.step" />
+						<span class="eror help-block" ng-show="isValidated && insForm.step.$error.required">Obligatoire</span>
+						<span class="help-block">Le pas de la boucle définie le saut éfféctuer à chaque étape. Si aucune valeur n'est indiquée un pas de 1 est appliqué. Par exemple une boucle de 1 à 3 avec un pas de 0.5 vas prendre les valeurs : 1, 1.5, 2, 2.5, 3.</span>
+					</div>
+				</div>
+			</div>
+
 		</form>
 	</div>
 

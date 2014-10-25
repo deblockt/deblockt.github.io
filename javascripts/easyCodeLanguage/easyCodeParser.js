@@ -110,10 +110,12 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 			message : 'Votre chaine de caractére n\'est pas fermée. Elle doit être fermée avec le caractére {0}. Par exemple "Bonjour j\\"aime les chats" ou \'Bonjour j\\\'aime les chats\''
 		},
 		'variableAlreadyDefined' : {
-			message : 'La variable {0} est déjà définie'
+			message : 'La variable {0} est déjà définie',
+			severity : 'warning'
 		},
 		'variableNotDefined' : {
-			message : 'La variable {0} n\'est pas définie'
+			message : 'La variable {0} n\'est pas définie',
+			severity : 'warning'
 		}
 	};
 	
@@ -149,6 +151,10 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 		},
 		getEnd : function() {
 			return this.endOffset;
+		},
+		getSeverity : function(){
+			var message = this.msg in ExceptionConfig ? ExceptionConfig[this.msg].severity : undefined;
+			return message || 'error';
 		}
 	};
 	
@@ -383,6 +389,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 		this.varTypes = easyCodeConfiguration.getVarTypes();
 		this.END_OF_BLOCK = 'endOfBlock';
 		this.context = new Context(parentContext);
+		this.errors = [];
 	};
 	
 	Parser.prototype = {
@@ -422,7 +429,6 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 		parse : function(content, endBlock) {
 			this.initParser(content);
 			var parseResult = [];
-			var errors = [];
 			var startParsing = this.stream.pos;
 			// start the parsing
 			while (!this.stream.eol()) {
@@ -432,7 +438,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 					
 					// is a end block stop immediatly to parse
 					if (typeof line == "string" && line.indexOf(this.END_OF_BLOCK) === 0) {
-						return {endInstruction : line.slice(this.END_OF_BLOCK.length + 1, line.length), result : parseResult, errors : errors, context : this.context};
+						return {endInstruction : line.slice(this.END_OF_BLOCK.length + 1, line.length), result : parseResult, errors : this.errors, context : this.context};
 					} else {
 						this.checkEndOfLine();
 						if (line != undefined) {
@@ -442,10 +448,12 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 					}
 				} catch (e) {
 					if (e instanceof ParseException) {
-						errors.push(e);
+						this.errors.push(e);
+						e.toThrow = true;
 					} else if (e.errors) {
 						for (var i in e.errors) {
-							errors.push(e.errors[i]);
+							this.errors.push(e.errors[i]);
+							e.errors[i].toThrow = true;
 						}
 					}
 					console.log(e);
@@ -454,11 +462,11 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 				}
 			}
 			
-			if (endBlock && errors.length == 0) {
+			if (endBlock && this.errors.length == 0) {
 				throw new ParseException('blockNotEnded', [endBlock], startParsing, this.stream.pos);
 			}
 			
-			return {errors : errors, result : parseResult, context : this.context};			
+			return {errors : this.errors, result : parseResult, context : this.context};			
 		},
 		/**
 		 * parse a line code, all line type can be parse affectation, write, etc.
@@ -552,12 +560,13 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 		 */
 		parseRead : function() {
 			var name = this.parseVarname();
-			var varcall = this.parseVarCall(name, false);
 			
 			if (!this.context.isset(name, false)) {
-				throw new ParseException('variableNotDefined', [name], this);
+				this.errors.push(new ParseException('variableNotDefined', [name], this));
 			}
 			
+			var varcall = this.parseVarCall(name, false);
+
 			return this.languageRunnerFactory.createRead(varcall, this.languageRunnerFactory.createOffset(this));
 		},
 		/**
@@ -579,7 +588,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 		/**
 		 * parse a sub block used for if while for
 		 */
-		parseChild : function(endBlock) {
+		parseChild : function(endBlock, throwException) {
 			var parser = new Parser(this.languageRunnerFactory, this.context);
 			var from = this.stream.pos;
 			var body = parser.parse(this.stream, endBlock);
@@ -587,8 +596,23 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 			
 			body.context.setRange(from, to);
 			
-			if (body.errors && body.errors.length > 0) {
-				throw {errors : body.errors};
+			if (body.errors && body.errors.length > 0) {				
+				/*var toThrow = throwException || false;
+				if (throwException === undefined) {
+					for (var i in body.errors) {
+						if (body.errors[i].toThrow) {
+							toThrow = true;
+							break;
+						}
+					}
+				}
+				// rethrow throwed body exception
+				if (toThrow) {
+					throw {errors : body.errors};
+				} else {*/
+					this.errors = this.errors.concat(body.errors);
+				//}
+				// dont rethrow body exception
 			}
 			return body;
 		},
@@ -651,6 +675,9 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 			}
 
 			var varname = this.parseVarname();
+			if (!this.context.isset(varname, false)) {
+				this.errors.push(new ParseException('variableNotDefined', [varname], this));
+			}
 			var start = this.stream.pos;
 			this.stream.eatSpace();
 			
@@ -690,6 +717,9 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 				
 				this.checkEndOfLine();
 								
+				// add _index variable
+				this.context.defineVar(varname+'_INDEX', 'MIXED');
+
 				var body = this.parseChild(this.blocs['for']);
 				// create the for instruction
 				return this.languageRunnerFactory.createForEach(varname, array, body.result, this.languageRunnerFactory.createOffset(start, this.stream.pos));
@@ -927,7 +957,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 					// if it's variable check is var isser
 					if (ret.type == 'var') {
 						if (!this.context.isset(ret.name, false)) {
-							throw new ParseException('variableNotDefined', [ret.name], ret.offset);
+							this.errors.push(new ParseException('variableNotDefined', [ret.name], ret.offset));
 						}						
 					}
 					
@@ -991,7 +1021,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 			var indexs = undefined;
 			var isFunction = false;
 			var params = [];
-			
+			var beforeEatSpace = this.stream.pos;
 			// eatSpace
 			this.stream.eatWhile(this.spaces);
 			var current = this.stream.pos;
@@ -1021,7 +1051,7 @@ define(['easyCodeConfiguration', 'codemirror/lib/codemirror', 'easyCodeContext']
 			}
 			
 			if (!isFunction) {
-				return this.languageRunnerFactory.createVar(varname, indexs, undefined, current);
+				return this.languageRunnerFactory.createVar(varname, indexs, undefined, this.languageRunnerFactory.createOffset(beforeEatSpace - varname.length , beforeEatSpace));
 			} else {
 				return this.languageRunnerFactory.createFunctionCall(varname, indexs, params, current);
 			}			

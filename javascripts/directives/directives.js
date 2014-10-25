@@ -24,6 +24,23 @@ define(['app'], function(app){
                 }
             });
         };
-    });
+    }).filter('orderObjectBy', function() {
+	  return function(items, field, reverse) {
+	    var filtered = [];
+	    
+	    console.log(field, reverse);
+	    angular.forEach(items, function(item, key) {
+	    	item.key = key;
+	      filtered.push(item);
+	    });
+	    
+	    filtered.sort(function (a, b) {
+	      return (a[field] > b[field] ? 1 : -1);
+	    });
+
+	    if(reverse) filtered.reverse();
+	    return filtered;
+	  };
+	});
 
 });

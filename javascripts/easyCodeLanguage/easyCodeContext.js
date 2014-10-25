@@ -1,4 +1,6 @@
-define(['easyCodeRuntimeException'], function(RuntimeException){
+define(['easyCodeRuntimeException', 'easyCodeConfiguration'], function(RuntimeException, easyCodeConfiguration){
+
+	var FUNCTIONS = easyCodeConfiguration.getFunctions();		
 
 	/**
 	 * context class
@@ -25,6 +27,8 @@ define(['easyCodeRuntimeException'], function(RuntimeException){
 			this.childs.push(context);
 		},
 		isset : function(varName, exceptionMode, offset) {
+			varName = varName.toUpperCase();
+			
 			if  (varName in this.vars) {
 				return true;
 			}

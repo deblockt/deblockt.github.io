@@ -83,7 +83,7 @@ define(['app', 'easyCodeParser', 'services/fileSystem', 'controllers/popUp', 'co
 		return string.replace(/[^a-z0-9\(\)\-]/gi, '_').toLowerCase();
 	}
 		
-    app.controller('easyCodeEditor', function($scope, popUpManager, $modal){
+    app.controller('easyCodeEditor', function($scope, popUpManager, $modal, $timeout){
 			
 		terminalWritter.init($scope);
 		terminalReader.init($scope);
@@ -109,9 +109,9 @@ define(['app', 'easyCodeParser', 'services/fileSystem', 'controllers/popUp', 'co
 				});
             };
             
-			options.extraKeys = {
+			angular.extend(options.extraKeys, {
 				"Ctrl-S": function(instance) { $scope.saveAlgo(tab)},
-			};
+			});
 			
             tab.options = options; 
             
@@ -164,8 +164,10 @@ define(['app', 'easyCodeParser', 'services/fileSystem', 'controllers/popUp', 'co
 
 		
         $scope.clearConsole = function(){
-            var terminalScope = angular.element(document.getElementById('terminal')).scope();
-            terminalScope.clear();
+            $timeout(function(){
+	            var terminalScope = angular.element(document.getElementById('terminal')).scope();
+	            terminalScope.clear();
+	        });
         };
 				
         $scope.runAlgo = function(){

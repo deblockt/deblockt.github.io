@@ -37,6 +37,7 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
       hooks = parserConfig.hooks || {},
       multiLineStrings = true;
   var isOperatorChar = /[+\-*&%=<>!?|\/]/;
+
   // create electricInput regex for end block keywork
   var electricInputRegexString = '';
   for (var startWord in blockKeywords) {
@@ -232,61 +233,66 @@ CodeMirror.defineMode("easyCode", function(config, parserConfig) {
     if (words.length) {
       mode.helperType = mimes[0];
       CodeMirror.registerHelper("hint", "easyCode", function(editor, options){
-		var Pos = CodeMirror.Pos;
-		var cur = editor.getCursor();
-		var token = editor.getTokenAt(editor.getCursor());
-		
-		var list = [];
-		var wordList = [];
-		function addToList(value) {
-			var tokenString = token.string.trim().toUpperCase();
-			
-			// test if value correspond current entry
-			if (tokenString.length > 0 && value.indexOf(tokenString) == -1) {
-				return;
-			}
-			
-			if (Array.indexOf(list, value) == -1) {
-				wordList.push(value);
-				list.push(
-					{
-						text : value,
-						hint : function(cm, data, completion){
-							var easyCode = cm.getMode({},"easyCode");
-							
-							var before = cm.getRange(Pos(cur.line, 0), Pos(cur.line, token.start));
-							// if the word is the first of the line
-							if (before.trim().length == 0) {
-								token.start = easyCode.indent(token.state, completion.text);
-							} else if (token.string.trim() == 0) {
-								// if it's after an other word but no car are entred
-								token.start += 1;
-							}
-													
-							cm.replaceRange(completion.text, Pos(cur.line, token.start),  Pos(cur.line, token.end), "complete")
-						}
-					}
-				);
-			}
-		}
-		
-		// add end bloc keyword
-		if (vblocKeyWord[token.state.context.blockName]) {
-			for (var i in  vblocKeyWord[token.state.context.blockName]) {
-				addToList(vblocKeyWord[token.state.context.blockName][i]);
-			}
-		}
-		
-		for (var i in words) {
-			addToList(words[i]);
-		}
-	 
-		return {
-			list : list,
-			from: Pos(cur.line, token.start),
-			to: Pos(cur.line, token.end)				
-		};
-	  });
+    		var Pos = CodeMirror.Pos;
+    		var cur = editor.getCursor();
+    		var token = editor.getTokenAt(editor.getCursor());
+    		
+    		var list = [];
+    		var wordList = [];
+    		function addToList(value, isFunction) {
+    			var tokenString = token.string.trim().toUpperCase();
+    			
+    			// test if value correspond current entry
+    			if (tokenString.length > 0 && value.indexOf(tokenString) == -1) {
+    				return;
+    			}
+    			
+    			if (Array.indexOf(list, value) == -1) {
+    				wordList.push(value);
+    				list.push(
+    					{
+    						text : value,
+    						hint : function(cm, data, completion){
+    							var easyCode = cm.getMode({},"easyCode");
+    							
+    							var before = cm.getRange(Pos(cur.line, 0), Pos(cur.line, token.start));
+    							// if the word is the first of the line
+    							if (before.trim().length == 0) {
+    								token.start = easyCode.indent(token.state, completion.text);
+    							} else if (token.string.trim() == 0) {
+    								// if it's after an other word but no car are entred
+    								token.start += 1;
+    							}
+    													
+    							cm.replaceRange(completion.text + (isFunction ? '()' : ''), Pos(cur.line, token.start),  Pos(cur.line, token.end), "complete")
+                }
+    					}
+    				);
+    			}
+    		}
+    		
+    		// add end bloc keyword
+    		if (vblocKeyWord[token.state.context.blockName]) {
+    			for (var i in  vblocKeyWord[token.state.context.blockName]) {
+    				addToList(vblocKeyWord[token.state.context.blockName][i]);
+    			}
+    		}
+    		
+    		for (var i in words) {
+    			addToList(words[i]);
+    		}
+
+        var functions = easyCodeConfiguration.getFunctions();
+        for (var i in functions) {
+          addToList(i.toUpperCase(), true);
+        }
+    	 
+    		return {
+    			list : list,
+    			from: Pos(cur.line, token.start),
+    			to: Pos(cur.line, token.end)				
+    		};
+	   });
     }
 
     for (var i = 0; i < mimes.length; ++i)

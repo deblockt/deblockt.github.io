@@ -30,7 +30,7 @@ define(['easyCodeConfiguration', 'easyCodeParser'], function(easyCodeConfigurati
 					error.toString(),
 					error.getStart(),
 					error.getEnd(),
-					'error'
+					error.getSeverity()
 				);
 			}
 		} catch (exception) {
